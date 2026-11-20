@@ -1,0 +1,567 @@
+import { useEffect, useMemo, useState } from 'react'
+import './AutoLibrary.css'
+import MotorViewer from './components/MotorViewer'
+import CarViewer from './components/CarViewer'
+
+import {
+    obtenerVehiculos,
+    obtenerVehiculo
+} from './lib/vehiculos'
+
+
+const P = {
+    search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
+    car: <><path d="m5 11 2-5h10l2 5" /><path d="M3 11h18v7H3zM6 18v2m12-2v2" /></>,
+    book: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5z" /><path d="M4 16h16" /></>,
+    wrench: <path d="M14 6a5 5 0 0 0-6 6l-5 6 3 3 6-5a5 5 0 0 0 6-6l-4 3-3-3z" />,
+    file: <><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8z" /><path d="M14 2v6h6M8 13h8m-8 4h8" /></>,
+    arrow: <path d="M5 12h14m-6-6 6 6-6 6" />,
+    back: <path d="m15 18-6-6 6-6" />
+}
+
+function Icon({ n }) {
+    return (
+        <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+        >
+            {P[n]}
+        </svg>
+    )
+}
+
+function Label({ children }) {
+    return <div className="eyebrow"><i />{children}</div>
+}
+
+function Logo() {
+    return (
+        <a className="logo" href="#">
+            <i><Icon n="book" /></i>
+            <span>auto<b>library</b><small>LA BIBLIOTECA DEL MOTOR</small></span>
+        </a>
+    )
+}
+
+function Car() {
+    return (
+        <svg className="car" viewBox="0 0 660 300" role="img" aria-label="Ilustración de un sedán">
+            <defs>
+                <linearGradient id="paint" x2="1" y2="1">
+                    <stop stopColor="#eaf0e7" />
+                    <stop offset="1" stopColor="#78917f" />
+                </linearGradient>
+            </defs>
+            <ellipse cx="330" cy="247" rx="250" ry="20" fill="#20352b" opacity=".12" />
+            <path d="m75 203 14-38q8-9 45-16l100-27 68-65q15-13 35-13h85q27 0 44 22l56 62 45 20q23 10 28 36l3 20q1 15-18 15H94q-22 0-19-16z" fill="url(#paint)" stroke="#516b5d" strokeWidth="3" />
+            <path d="m247 119 63-59q13-12 30-12h44v71zm149-71h28q23 0 37 16l49 55h-114z" fill="#354c45" stroke="#61776a" strokeWidth="3" />
+            <path d="M390 48v71M246 121h270M305 121l-6 52m94-52 4 52" fill="none" stroke="#718579" strokeWidth="3" />
+            <circle cx="185" cy="207" r="38" fill="#202b28" />
+            <circle cx="185" cy="207" r="22" fill="#d7ddd5" />
+            <circle cx="500" cy="207" r="38" fill="#202b28" />
+            <circle cx="500" cy="207" r="22" fill="#d7ddd5" />
+        </svg>
+    )
+}
+
+function App() {
+    const [list, S] = useState([])
+    const [car, C] = useState(null)
+    const [gear, G] = useState('Automática')
+    const [tab, T] = useState('catalogo')
+    const [q, Q] = useState('')
+    const [make, M] = useState('')
+    const [model, D] = useState('')
+    const [year, Y] = useState('')
+    const [error, E] = useState('')
+    const [loading, L] = useState(true)
+
+
+    useEffect(() => {
+        let activo = true
+
+        async function cargarVehiculos() {
+            try {
+                L(true)
+                E('')
+
+                const vehiculos = await obtenerVehiculos()
+
+                if (activo) S(vehiculos)
+            } catch (error) {
+                console.error('Error de Supabase:', error)
+
+                if (activo) {
+                    E('No se pudieron cargar los vehículos desde Supabase.')
+                }
+            } finally {
+                if (activo) L(false)
+            }
+        }
+
+        cargarVehiculos()
+
+        return () => {
+            activo = false
+        }
+    }, [])
+
+
+    const makes = [...new Set(list.map(x => x.make))]
+    const models = [...new Set(list.filter(x => !make || x.make === make).map(x => x.model))]
+    const years = [...new Set(
+        list
+            .filter(x => (!make || x.make === make) && (!model || x.model === model))
+            .map(x => x.year)
+    )]
+
+    const filtered = useMemo(
+        () => list.filter(x =>
+            (!q || [x.make, x.model, x.year, x.trim, x.engineCode].join(' ').toLowerCase().includes(q.toLowerCase())) &&
+            (!make || x.make === make) &&
+            (!model || x.model === model) &&
+            (!year || String(x.year) === year)
+        ),
+        [list, q, make, model, year]
+    )
+
+
+    async function open(v) {
+        C(v)
+
+        G(
+            v.transmissions.includes('Automática')
+                ? 'Automática'
+                : v.transmissions[0]
+        )
+
+        T('catalogo')
+
+        try {
+            const vehiculo = await obtenerVehiculo(v.id)
+
+            console.log('Ficha técnica desde Supabase:', vehiculo)
+
+            C(vehiculo)
+        } catch (error) {
+            console.error('Error al cargar vehículo:', error)
+            // Conservamos los datos iniciales del catálogo.
+        }
+    }
+
+
+    function go(t) {
+        T(t)
+        C(null)
+        window.scrollTo(0, 0)
+    }
+
+    const isCivic2003 =
+        car &&
+        car.make?.toLowerCase() === 'honda' &&
+        car.model?.toLowerCase().includes('civic') &&
+        Number(car.year) === 2003
+
+    return (
+        <div className="autolibrary">
+            <header>
+                <div className="nav">
+                    <Logo />
+                    <nav>
+                        <button onClick={() => go('catalogo')}>Explorar</button>
+                        <button onClick={() => go('mantenimiento')}>Mantenimiento</button>
+                        <button onClick={() => go('documentos')}>Biblioteca</button>
+                    </nav>
+                    <span className="open">● Biblioteca abierta</span>
+                </div>
+            </header>
+
+            {car ? (
+                <main className="wrap detail-page">
+                    <button
+                        className="back"
+                        onClick={() => {
+                            C(null)
+                            T('catalogo')
+                        }}
+                    >
+                        <Icon n="back" /> Volver al catálogo
+                    </button>
+
+                    <section className="detail">
+                        <div>
+                            <Label>FICHA DEL VEHÍCULO</Label>
+                            <h1>
+                                {car.make} <em>{car.model}</em>
+                                <br />
+                                {car.year} <small>{car.trim}</small>
+                            </h1>
+                            <p>Información técnica y de servicio, reunida en un solo lugar.</p>
+                            <p className="tags">
+                                <Icon n="car" /> {car.bodyStyle || 'Automóvil'}
+                                <Icon n="wrench" /> Motor {car.engineCode}
+                            </p>
+                        </div>
+                        <div className="art">
+                            {isCivic2003 ? <CarViewer /> : <Car />}
+                        </div>
+                    </section>
+
+                    {isCivic2003 && <MotorViewer />}
+
+                    <div className="choice">
+                        <div>
+                            <Label>CONFIGURACIÓN</Label>
+                            <h2>Elige tu transmisión</h2>
+                        </div>
+                        <div>
+                            {car.transmissions.map(x => (
+                                <button
+                                    className={gear === x ? 'chosen' : ''}
+                                    key={x}
+                                    onClick={() => G(x)}
+                                >
+                                    {x}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="tabs">
+                        <button
+                            className={tab === 'specs' || tab === 'catalogo' ? 'chosen' : ''}
+                            onClick={() => T('specs')}
+                        >
+                            Especificaciones
+                        </button>
+                        <button onClick={() => T('mantenimiento')}>Mantenimiento</button>
+                        <button onClick={() => T('documentos')}>Documentos</button>
+                    </div>
+
+                    <Content car={car} gear={gear} tab={tab} />
+                </main>
+            ) : tab === 'catalogo' ? (
+                <>
+                    <section className="hero">
+                        <div className="hero-inner">
+                            <div>
+                                <Label>TU CENTRO DE INFORMACIÓN AUTOMOTRIZ</Label>
+                                <h1>Conoce tu auto.<br /><em>Cuídalo mejor.</em></h1>
+                                <p>Datos técnicos, mantenimiento y recursos útiles para entender cada vehículo.</p>
+                                <button
+                                    className="primary"
+                                    onClick={() => document.querySelector('#catalogo').scrollIntoView({ behavior: 'smooth' })}
+                                >
+                                    Explorar catálogo <Icon n="arrow" />
+                                </button>
+                                <span className="hint">✓ Información organizada por vehículo</span>
+                            </div>
+                            <div className="hero-car">
+                                <span>03<small>GENERACIÓN</small></span>
+                                <Car />
+                            </div>
+                        </div>
+                    </section>
+
+                    <main className="wrap catalog" id="catalogo">
+                        <div className="title">
+                            <div>
+                                <Label>EXPLORA LA BIBLIOTECA</Label>
+                                <h2>Encuentra tu vehículo</h2>
+                                <p>Empieza por la marca, el modelo o el año.</p>
+                            </div>
+                            <b>{String(filtered.length).padStart(2, '0')} VEHÍCULOS</b>
+                        </div>
+
+                        <div className="layout">
+                            <aside>
+                                <strong>Filtrar catálogo</strong>
+                                <label className="search">
+                                    <Icon n="search" />
+                                    <input
+                                        aria-label="Buscar vehículo"
+                                        placeholder="Buscar vehículo..."
+                                        value={q}
+                                        onChange={e => Q(e.target.value)}
+                                    />
+                                </label>
+                                <Filter
+                                    label="MARCA"
+                                    value={make}
+                                    options={makes}
+                                    empty="Todas las marcas"
+                                    change={v => {
+                                        M(v)
+                                        D('')
+                                        Y('')
+                                    }}
+                                />
+                                <Filter
+                                    label="MODELO"
+                                    value={model}
+                                    options={models}
+                                    empty="Todos los modelos"
+                                    change={v => {
+                                        D(v)
+                                        Y('')
+                                    }}
+                                />
+                                <Filter
+                                    label="AÑO"
+                                    value={year}
+                                    options={years.map(String)}
+                                    empty="Todos los años"
+                                    change={Y}
+                                />
+                                <button className="clear" onClick={() => {
+                                    Q('')
+                                    M('')
+                                    D('')
+                                    Y('')
+                                }}>
+                                    Limpiar filtros　↗
+                                </button>
+                                <small>El catálogo se ampliará pronto</small>
+                            </aside>
+
+                            <div className="results">
+                                {error && <p className="error">{error}</p>}
+                                {loading ? (
+                                    <p>Cargando catálogo…</p>
+                                ) : filtered.length ? (
+                                    <div className="cards">
+                                        {filtered.map(v => (
+                                            <button className="card" key={v.id} onClick={() => open(v)}>
+                                                <div className="car-bg">
+                                                    <span>{v.year}</span>
+                                                    <Car />
+                                                </div>
+                                                <div className="card-info">
+                                                    <small>{v.make.toUpperCase()} · {v.trim.toUpperCase()}</small>
+                                                    <h3>{v.model}</h3>
+                                                    <p>
+                                                        <Icon n="wrench" /> {v.engineCode}
+                                                        <span>{v.transmissions.length} transmisiones</span>
+                                                    </p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p>No encontramos vehículos. Prueba otros filtros.</p>
+                                )}
+                            </div>
+                        </div>
+                    </main>
+                </>
+            ) : (
+                <main className="wrap content">
+                    <Label>{tab === 'mantenimiento' ? 'CUIDADO DEL VEHÍCULO' : 'BIBLIOTECA TÉCNICA'}</Label>
+                    <h1>{tab === 'mantenimiento' ? 'Mantenimiento' : 'Manuales y documentos'}</h1>
+                    <p>Abre una ficha del catálogo para consultar el contenido asociado.</p>
+                    <button className="primary" onClick={() => go('catalogo')}>
+                        Ir al catálogo <Icon n="arrow" />
+                    </button>
+                </main>
+            )}
+
+            <footer>
+                <Logo />
+                <span>Información automotriz, organizada para encontrarla.</span>
+                <small>© 2026 AUTOLIBRARY</small>
+            </footer>
+        </div>
+    )
+}
+
+function Filter({ label, value, options, empty, change }) {
+    return (
+        <label className="filter">
+            {label}
+            <select value={value} onChange={e => change(e.target.value)}>
+                <option value="">{empty}</option>
+                {options.map(x => <option key={x}>{x}</option>)}
+            </select>
+        </label>
+    )
+}
+
+function Content({ car, gear, tab }) {
+    if (tab === 'mantenimiento') {
+        return (
+            <section className="panel">
+                <Label>MANTENIMIENTO</Label>
+                <h2>Guía de servicio</h2>
+                <Pending
+                    title="Plan de mantenimiento en preparación"
+                    text="Procedimientos e intervalos pendientes de documentación para esta versión."
+                />
+            </section>
+        )
+    }
+
+
+    if (tab === 'documentos') {
+        const documentos = car.documentos || []
+
+        return (
+            <section className="panel">
+                <Label>DOCUMENTOS</Label>
+                <h2>Manuales y diagramas</h2>
+
+                {documentos.length > 0 ? (
+                    <div className="documents-list">
+                        {documentos.map(doc => (
+                            <div className="document-item" key={doc.id}>
+                                <h3>{doc.titulo}</h3>
+                                <p>{doc.categoria}</p>
+                                <p>{doc.descripcion}</p>
+
+                                {doc.archivo_url && (
+                                    <a
+                                        href={doc.archivo_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        Consultar documento
+                                    </a>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <Pending
+                        title="Aún no hay documentos disponibles"
+                        text="Todavía no se han registrado manuales para este vehículo."
+                    />
+                )}
+            </section>
+        )
+    }
+
+
+    return (
+        <section className="specs">
+            <Label>DATOS PRINCIPALES</Label>
+            <h2>Especificaciones técnicas</h2>
+
+            {car.motor && (
+                <div className="motor-specs">
+                    <h3>Información del motor</h3>
+
+                    <div className="spec-grid">
+                        <Spec
+                            label="CÓDIGO"
+                            value={car.motor.codigo}
+                            detail="Identificación del motor"
+                        />
+                        <Spec
+                            label="CILINDRADA"
+                            value={`${car.motor.cilindrada_cc} cc`}
+                            detail="Desplazamiento"
+                        />
+                        <Spec
+                            label="POTENCIA"
+                            value={`${car.motor.potencia_hp} hp`}
+                            detail={`${car.motor.potencia_rpm} rpm`}
+                        />
+                        <Spec
+                            label="TORQUE"
+                            value={`${car.motor.torque_lbft} lb-pie`}
+                            detail={`${car.motor.torque_rpm} rpm`}
+                        />
+                        <Spec
+                            label="CILINDROS"
+                            value={car.motor.cilindros}
+                            detail={car.motor.configuracion}
+                        />
+                        <Spec
+                            label="DISTRIBUCIÓN"
+                            value={car.motor.distribucion}
+                            detail={`${car.motor.valvulas} válvulas`}
+                        />
+                    </div>
+                </div>
+            )}
+
+  
+<div className="spec-grid">
+    <Spec
+        label="MOTOR"
+        value={car.motor?.codigo || car.engineCode}
+        detail={
+            car.motor?.cilindrada_cc
+                ? `${car.motor.cilindrada_cc} cc`
+                : 'Cilindrada no registrada'
+        }
+    />
+
+    <Spec
+        label="TRANSMISIÓN"
+        value={gear}
+        detail={
+            car.transmisiones?.find(t => t.tipo === gear)
+                ? `${
+                    car.transmisiones.find(t => t.tipo === gear)
+                        .velocidades
+                  } velocidades · Tracción ${
+                    car.transmisiones.find(t => t.tipo === gear)
+                        .traccion || 'No registrada'
+                  }`
+                : 'Información pendiente'
+        }
+    />
+
+    <Spec
+        label="CARROCERÍA"
+        value={car.bodyStyle || 'No registrada'}
+        detail={`${car.make} ${car.model} · ${car.year}`}
+    />
+
+    <Spec
+        label="COMBUSTIBLE"
+        value={car.motor?.combustible || car.fuel || 'No registrado'}
+        detail="Tipo de combustible"
+    />
+</div>
+F
+            {car.specifications?.map(x => (
+                <p className="spec-row" key={x.label}>
+                    {x.label}<b>{x.value}</b>
+                </p>
+            ))}
+        </section>
+    )
+}
+
+function Spec({ label, value, detail }) {
+    return (
+        <article>
+            <small>{label}</small>
+            <strong>{value}</strong>
+            <p>{detail}</p>
+        </article>
+    )
+}
+
+function Pending({ title, text }) {
+    return (
+        <div className="pending">
+            <Icon n="file" />
+            <div>
+                <strong>{title}</strong>
+                <p>{text}</p>
+            </div>
+            <small>PENDIENTE</small>
+        </div>
+    )
+}
+
+export default App

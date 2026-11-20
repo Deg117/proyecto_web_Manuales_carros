@@ -1,0 +1,6 @@
+cd C:\Users\brian\OneDrive\Desktop\p_app_web\server
+npm run dev
+
+
+cd C:\Users\brian\OneDrive\Desktop\p_app_web\client
+npm run dev
