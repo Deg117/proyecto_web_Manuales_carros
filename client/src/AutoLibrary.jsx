@@ -339,10 +339,17 @@ function App() {
                                     <div className="cards">
                                         {filtered.map(v => (
                                             <button className="card" key={v.id} onClick={() => open(v)}>
+
                                                 <div className="car-bg">
                                                     <span>{v.year}</span>
-                                                    <Car />
+
+                                                    <img
+                                                        src="/models/images/Civic.png"
+                                                        alt="Honda Civic 2003"
+                                                        className="catalog-car-image"
+                                                    />
                                                 </div>
+
                                                 <div className="card-info">
                                                     <small>{v.make.toUpperCase()} · {v.trim.toUpperCase()}</small>
                                                     <h3>{v.model}</h3>
@@ -491,47 +498,45 @@ function Content({ car, gear, tab }) {
                 </div>
             )}
 
-  
-<div className="spec-grid">
-    <Spec
-        label="MOTOR"
-        value={car.motor?.codigo || car.engineCode}
-        detail={
-            car.motor?.cilindrada_cc
-                ? `${car.motor.cilindrada_cc} cc`
-                : 'Cilindrada no registrada'
-        }
-    />
 
-    <Spec
-        label="TRANSMISIÓN"
-        value={gear}
-        detail={
-            car.transmisiones?.find(t => t.tipo === gear)
-                ? `${
-                    car.transmisiones.find(t => t.tipo === gear)
-                        .velocidades
-                  } velocidades · Tracción ${
-                    car.transmisiones.find(t => t.tipo === gear)
-                        .traccion || 'No registrada'
-                  }`
-                : 'Información pendiente'
-        }
-    />
+            <div className="spec-grid">
+                <Spec
+                    label="MOTOR"
+                    value={car.motor?.codigo || car.engineCode}
+                    detail={
+                        car.motor?.cilindrada_cc
+                            ? `${car.motor.cilindrada_cc} cc`
+                            : 'Cilindrada no registrada'
+                    }
+                />
 
-    <Spec
-        label="CARROCERÍA"
-        value={car.bodyStyle || 'No registrada'}
-        detail={`${car.make} ${car.model} · ${car.year}`}
-    />
+                <Spec
+                    label="TRANSMISIÓN"
+                    value={gear}
+                    detail={
+                        car.transmisiones?.find(t => t.tipo === gear)
+                            ? `${car.transmisiones.find(t => t.tipo === gear)
+                                .velocidades
+                            } velocidades · Tracción ${car.transmisiones.find(t => t.tipo === gear)
+                                .traccion || 'No registrada'
+                            }`
+                            : 'Información pendiente'
+                    }
+                />
 
-    <Spec
-        label="COMBUSTIBLE"
-        value={car.motor?.combustible || car.fuel || 'No registrado'}
-        detail="Tipo de combustible"
-    />
-</div>
-F
+                <Spec
+                    label="CARROCERÍA"
+                    value={car.bodyStyle || 'No registrada'}
+                    detail={`${car.make} ${car.model} · ${car.year}`}
+                />
+
+                <Spec
+                    label="COMBUSTIBLE"
+                    value={car.motor?.combustible || car.fuel || 'No registrado'}
+                    detail="Tipo de combustible"
+                />
+            </div>
+            F
             {car.specifications?.map(x => (
                 <p className="spec-row" key={x.label}>
                     {x.label}<b>{x.value}</b>

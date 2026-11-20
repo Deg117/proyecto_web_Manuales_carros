@@ -94,7 +94,7 @@ export default function MotorViewer() {
           shadows
           dpr={[1, 2]}
         >
-          <color attach="background" args={['#edf1e9']} />
+          <color attach="background" args={['#283818']} />
           <ambientLight intensity={1.5} />
           <directionalLight
             position={[4, 6, 5]}

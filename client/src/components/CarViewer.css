@@ -1,11 +1,19 @@
+
+/* ==========================================
+   AUTOLIBRARY - CAR VIEWER
+   CARBON & RACING RED
+   ========================================== */
+
+/* Contenedor de la ficha */
 .detail .art {
   display: block;
   min-width: 0;
   min-height: 250px;
   overflow: hidden;
-  background: #edf1e9;
+  background: #161A20;
 }
 
+/* Visor principal */
 .car-viewer {
   position: relative;
   width: 100%;
@@ -14,18 +22,27 @@
   min-height: 250px;
   margin: 0;
   overflow: hidden;
-  background: #edf1e9;
+
+  background:
+    radial-gradient(
+      ellipse at 50% 60%,
+      #272D36 0%,
+      #161A20 65%,
+      #0F1115 100%
+    );
 }
 
+/* Área del modelo 3D */
 .car-canvas {
   position: relative;
   width: 100%;
   height: 100%;
   min-height: 250px;
   overflow: hidden;
-  background: #edf1e9;
+  background: transparent;
 }
 
+/* Canvas de Three.js */
 .car-canvas canvas {
   display: block;
   width: 100%;
@@ -33,21 +50,41 @@
   touch-action: none;
 }
 
+/* Indicaciones de control */
 .car-controls-hint {
   position: absolute;
   bottom: 12px;
   left: 12px;
-  padding: 7px 10px;
-  background: #ffffffdf;
-  color: #68786c;
+  padding: 8px 12px;
+
+  background: rgba(15, 17, 21, 0.88);
+  color: #A1AAB8;
+
+  border: 1px solid #2A313C;
+  border-left: 2px solid #D62828;
+  border-radius: 5px;
+
   font-size: 9px;
+  line-height: 1.5;
+
   pointer-events: none;
+  z-index: 2;
+
+  backdrop-filter: blur(8px);
 }
 
+/* Responsive */
 @media (max-width: 520px) {
   .detail .art,
   .car-viewer,
   .car-canvas {
     min-height: 225px;
+  }
+
+  .car-controls-hint {
+    bottom: 8px;
+    left: 8px;
+    padding: 6px 9px;
+    font-size: 8px;
   }
 }

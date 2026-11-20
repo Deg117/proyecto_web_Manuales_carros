@@ -84,7 +84,7 @@ export default function CarViewer() {
           dpr={[1, 2]}
           gl={{ antialias: true, alpha: false }}
         >
-          <color attach="background" args={['#edf1e9']} />
+          <color attach="background" args={['#000000']} />
           <ambientLight intensity={1.5} />
           <directionalLight position={[4, 6, 5]} intensity={2} castShadow />
           <directionalLight position={[-4, 2, -3]} intensity={0.8} />
