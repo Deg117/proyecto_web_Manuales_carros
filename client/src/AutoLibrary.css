@@ -601,3 +601,45 @@
     height: 200px;
   }
 }
+
+
+/* TABLERO EN LA PORTADA */
+
+.autolibrary .hero-dashboard {
+  height: 320px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Eliminar óvalos del carrito anterior */
+.autolibrary .hero-dashboard::before,
+.autolibrary .hero-dashboard::after {
+  display: none;
+}
+
+.autolibrary .dashboard-image {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  max-height: 290px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+
+  filter: drop-shadow(
+    0 12px 22px rgba(0, 0, 0, 0.45)
+  );
+}
+
+@media (max-width: 520px) {
+  .autolibrary .hero-dashboard {
+    height: 230px;
+  }
+
+  .autolibrary .dashboard-image {
+    max-height: 215px;
+  }
+}

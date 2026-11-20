@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import './AutoLibrary.css'
 import MotorViewer from './components/MotorViewer'
 import CarViewer from './components/CarViewer'
+import PassatViewer from './components/PassatViewer'
 
 import {
     obtenerVehiculos,
@@ -150,6 +151,11 @@ function App() {
             console.log('Ficha técnica desde Supabase:', vehiculo)
 
             C(vehiculo)
+            G(
+                vehiculo.transmissions.includes('Automática')
+                    ? 'Automática'
+                    : vehiculo.transmissions[0] || 'No especificada'
+            )
         } catch (error) {
             console.error('Error al cargar vehículo:', error)
             // Conservamos los datos iniciales del catálogo.
@@ -168,6 +174,12 @@ function App() {
         car.make?.toLowerCase() === 'honda' &&
         car.model?.toLowerCase().includes('civic') &&
         Number(car.year) === 2003
+
+    const isPassat2010 =
+        car &&
+        car.make?.toLowerCase() === 'volkswagen' &&
+        car.model?.toLowerCase().includes('passat') &&
+        Number(car.year) === 2010
 
     return (
         <div className="autolibrary">
@@ -210,7 +222,13 @@ function App() {
                             </p>
                         </div>
                         <div className="art">
-                            {isCivic2003 ? <CarViewer /> : <Car />}
+                            {isCivic2003 ? (
+                                <CarViewer />
+                            ) : isPassat2010 ? (
+                                <PassatViewer modelPath="/models/passat_2010/car/base_basic_shaded.glb" />
+                            ) : (
+                                <Car />
+                            )}
                         </div>
                     </section>
 
@@ -263,10 +281,15 @@ function App() {
                                 </button>
                                 <span className="hint">✓ Información organizada por vehículo</span>
                             </div>
-                            <div className="hero-car">
-                                <span>03<small>GENERACIÓN</small></span>
-                                <Car />
+
+                            <div className="hero-car hero-dashboard">
+                                <img
+                                    src="/models/images/tablero.png"
+                                    alt="Tablero automotriz iluminado"
+                                    className="dashboard-image"
+                                />
                             </div>
+
                         </div>
                     </section>
 
@@ -344,8 +367,10 @@ function App() {
                                                     <span>{v.year}</span>
 
                                                     <img
-                                                        src="/models/images/Civic.png"
-                                                        alt="Honda Civic 2003"
+                                                        src={v.make?.toLowerCase() === 'volkswagen' && v.model?.toLowerCase().includes('passat')
+                                                            ? '/models/images/Passat.png'
+                                                            : '/models/images/Civic.png'}
+                                                        alt={`${v.make} ${v.model} ${v.year}`}
                                                         className="catalog-car-image"
                                                     />
                                                 </div>
@@ -476,13 +501,13 @@ function Content({ car, gear, tab }) {
                         />
                         <Spec
                             label="POTENCIA"
-                            value={`${car.motor.potencia_hp} hp`}
-                            detail={`${car.motor.potencia_rpm} rpm`}
+                            value={car.motor.potencia_hp != null ? `${car.motor.potencia_hp} hp` : 'Pendiente'}
+                            detail={car.motor.potencia_rpm != null ? `${car.motor.potencia_rpm} rpm` : 'Potencia por confirmar'}
                         />
                         <Spec
                             label="TORQUE"
-                            value={`${car.motor.torque_lbft} lb-pie`}
-                            detail={`${car.motor.torque_rpm} rpm`}
+                            value={car.motor.torque_lbft != null ? `${car.motor.torque_lbft} lb-pie` : 'Pendiente'}
+                            detail={car.motor.torque_rpm != null ? `${car.motor.torque_rpm} rpm` : 'Torque por confirmar'}
                         />
                         <Spec
                             label="CILINDROS"
@@ -536,7 +561,6 @@ function Content({ car, gear, tab }) {
                     detail="Tipo de combustible"
                 />
             </div>
-            F
             {car.specifications?.map(x => (
                 <p className="spec-row" key={x.label}>
                     {x.label}<b>{x.value}</b>

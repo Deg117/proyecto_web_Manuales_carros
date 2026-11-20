@@ -1,13 +1,26 @@
-
 import { supabase } from './supabaseClient'
 
 // Adaptar las columnas SQL al formato de AutoLibrary
 function adaptarVehiculo(v) {
+  const marca = v.marca || ''
+  const modelo = v.modelo || ''
+  const anio = Number(v.anio)
+
+  const esCivic2003 =
+    marca.toLowerCase() === 'honda' &&
+    modelo.toLowerCase().includes('civic') &&
+    anio === 2003
+
+  const esPassat2010 =
+    marca.toLowerCase() === 'volkswagen' &&
+    modelo.toLowerCase().includes('passat') &&
+    anio === 2010
+
   return {
     id: v.id,
-    make: v.marca,
-    model: v.modelo,
-    year: v.anio,
+    make: marca,
+    model: modelo,
+    year: anio,
     trim: v.version || '',
     engineCode: v.motor_codigo || '',
     displacementL: parseFloat(v.cilindrada) || null,
@@ -15,37 +28,70 @@ function adaptarVehiculo(v) {
     description: v.descripcion || '',
     imageUrl: v.imagen_url || '',
 
-    // Valores temporales para el Civic EX 2003.
-    // Posteriormente vendran de tablas relacionadas.
+    bodyStyle:
+      esPassat2010
+        ? 'Sedán'
+        : esCivic2003
+          ? 'Sedán'
+          : '',
+
+    // Valor provisional hasta obtener las relaciones completas.
     transmissions:
-      v.marca?.toLowerCase() === 'honda' &&
-      v.modelo?.toLowerCase() === 'civic' &&
-      v.anio === 2003
+      esCivic2003
         ? ['Automática', 'Manual']
-        : ['No especificada'],
+        : esPassat2010
+          ? ['Automática']
+          : ['No especificada'],
   }
 }
 
 export async function obtenerVehiculos() {
   const { data, error } = await supabase
     .from('vehiculos')
-    .select('*')
+    .select(`
+      *,
+      transmisiones (
+        id,
+        tipo,
+        velocidades,
+        traccion,
+        descripcion
+      )
+    `)
     .order('id', { ascending: true })
 
   if (error) throw error
 
-  return (data || []).map(adaptarVehiculo)
-}
+  return (data || []).map(v => {
+    const vehiculo = adaptarVehiculo(v)
 
+    return {
+      ...vehiculo,
+
+      transmissions:
+        v.transmisiones?.length > 0
+          ? v.transmisiones.map(t => t.tipo)
+          : vehiculo.transmissions,
+
+      transmisiones: v.transmisiones || [],
+    }
+  })
+}
 
 export async function obtenerVehiculo(id) {
   const { data, error } = await supabase
     .from('vehiculos')
     .select(`
       *,
-      motores (*),
-      transmisiones (*),
-      documentos (*)
+      motores (
+        *
+      ),
+      transmisiones (
+        *
+      ),
+      documentos (
+        *
+      )
     `)
     .eq('id', id)
     .single()
@@ -54,15 +100,21 @@ export async function obtenerVehiculo(id) {
 
   const vehiculo = adaptarVehiculo(data)
 
+  const transmisiones = data.transmisiones || []
+  const motores = data.motores || []
+  const documentos = data.documentos || []
+
   return {
     ...vehiculo,
-    motor: data.motores?.[0] ?? null,
-    motores: data.motores ?? [],
-    transmisiones: data.transmisiones ?? [],
-    documentos: data.documentos ?? [],
-    transmissions: data.transmisiones?.length
-      ? data.transmisiones.map(t => t.tipo)
-      : vehiculo.transmissions
+
+    motor: motores[0] ?? null,
+    motores,
+    transmisiones,
+    documentos,
+
+    transmissions:
+      transmisiones.length > 0
+        ? transmisiones.map(t => t.tipo)
+        : vehiculo.transmissions,
   }
 }
-
