@@ -70,6 +70,31 @@
   border-radius: 8px;
 }
 
+.motor-canvas.has-hotspot-hover canvas {
+  cursor: pointer;
+}
+
+.motor-hotspot-icon {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  background: rgba(190, 32, 32, 0.94);
+  box-shadow: 0 2px 9px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font: 700 14px/1 'Manrope', sans-serif;
+  transition: transform 0.15s ease, background 0.15s ease;
+  user-select: none;
+}
+
+.motor-hotspot-icon.is-hovered,
+.motor-hotspot-icon.is-selected {
+  transform: scale(1.16);
+  background: #f04438;
+}
+
 /* Indicaciones de controles */
 .motor-controls-hint {
   position: absolute;
@@ -97,8 +122,9 @@
 /* Panel de selección */
 .motor-selection {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
   min-height: 65px;
   margin-top: 12px;
   padding: 12px;
@@ -114,59 +140,94 @@
   font-size: 10px;
 }
 
-.motor-selection > div {
-  flex: 1;
-}
-
-.motor-selection strong {
-  color: #F3F4F6;
-  font-size: 11px;
-}
-
-.motor-selection p {
-  margin: 3px 0;
-  color: #A1AAB8;
-  font-size: 10px;
-}
-
 .motor-selection small {
   color: #8793A3;
   font-size: 9px;
 }
 
-/* Botón del panel */
-.motor-selection button {
-  padding: 7px 10px;
+.motor-information {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
 
+.motor-information > div {
+  min-width: 0;
+}
+
+.motor-information span {
+  color: #F87171;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.motor-information h3 {
+  margin: 5px 0;
+  color: #F3F4F6;
+  font-size: 14px;
+}
+
+.motor-information p,
+.motor-dev-capture p {
+  margin: 0;
+  color: #A1AAB8;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.motor-information button,
+.motor-capture-result button {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid #444d5a;
+  border-radius: 5px;
   background: #161A20;
   color: #F3F4F6;
-
-  border: 1px solid #2A313C;
-  border-radius: 5px;
-
-  font-size: 9px;
+  font: inherit;
+  font-size: 10px;
   cursor: pointer;
-
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease;
 }
 
-.motor-selection button:hover {
-  background: #292F38;
+.motor-information button:hover,
+.motor-capture-result button:hover {
   border-color: #D62828;
+  background: #292F38;
 }
 
-/* Marcador de selección */
-.selection-dot {
-  width: 9px;
-  height: 9px;
-  flex-shrink: 0;
+.motor-dev-capture {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px dashed #49515d;
+  border-radius: 8px;
+  background: #12151a;
+}
 
-  border-radius: 50%;
-  background: #D62828;
+.motor-dev-capture strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #D4DAE3;
+  font-size: 10px;
+}
 
-  box-shadow: 0 0 0 4px rgba(214, 40, 40, 0.16);
+.motor-capture-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.motor-capture-result code {
+  color: #FCA5A5;
+  font-size: 11px;
+  user-select: all;
+}
+
+.motor-capture-result small {
+  flex-basis: 100%;
 }
 
 /* Responsive */
@@ -183,6 +244,10 @@
     font-size: 17px;
   }
 
+  .motor-information {
+    flex-direction: column;
+  }
+
   .motor-controls-hint {
     bottom: 8px;
     left: 8px;
@@ -190,7 +255,4 @@
     font-size: 8px;
   }
 
-  .motor-selection {
-    flex-wrap: wrap;
-  }
 }

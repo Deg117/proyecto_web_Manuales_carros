@@ -1,85 +1,112 @@
-import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Bounds, Center, OrbitControls, useGLTF } from '@react-three/drei'
-import * as THREE from 'three'
+import { Bounds, Center, Html, OrbitControls, useGLTF } from '@react-three/drei'
 import './MotorViewer.css'
 import ModelErrorBoundary from './ModelErrorBoundary'
 import ModelLoadingOverlay from './ModelLoadingOverlay'
 import { MODELOS_3D } from '../config/modelos3d'
+import { PUNTOS_MOTOR_D17A2 } from '../data/puntosMotorD17A2'
 
 const MODEL = MODELOS_3D.hondaD17A2
 
-function SceneNode({ object, onSelect }) {
-  const props = {
-    name: object.name,
-    position: object.position,
-    quaternion: object.quaternion,
-    scale: object.scale,
-    visible: object.visible,
-  }
+function isValidPoint(point) {
+  return point !== null &&
+    typeof point === 'object' &&
+    typeof point.id === 'string' &&
+    Boolean(point.id.trim()) &&
+    ['nombre', 'sistema', 'descripcion'].every(field =>
+      typeof point[field] === 'string' && Boolean(point[field].trim())
+    ) &&
+    Array.isArray(point.posicion) &&
+    point.posicion.length === 3 &&
+    point.posicion.every(Number.isFinite)
+}
 
-  if (object.isMesh) {
-    return (
+const pointIds = new Set()
+const PUNTOS_VALIDOS = (Array.isArray(PUNTOS_MOTOR_D17A2) ? PUNTOS_MOTOR_D17A2 : [])
+  .filter(point => {
+    if (!isValidPoint(point) || pointIds.has(point.id)) return false
+    pointIds.add(point.id)
+    return true
+  })
+
+function Hotspot({ point, occlusionTargets, selected, hovered, onSelect, onHover }) {
+  return (
+    <group position={point.posicion}>
       <mesh
-        {...props}
-        geometry={object.geometry}
-        material={object.material}
-        castShadow
-        receiveShadow
         onClick={event => {
           event.stopPropagation()
-          onSelect({
-            point: event.point.toArray(),
-            name: event.object.name || 'Superficie del motor',
-          })
+          onSelect(point.id)
+        }}
+        onPointerOver={event => {
+          event.stopPropagation()
+          onHover(point.id)
+        }}
+        onPointerOut={event => {
+          event.stopPropagation()
+          onHover(null)
         }}
       >
-        {object.children.map(child => (
-          <SceneNode key={child.uuid} object={child} onSelect={onSelect} />
-        ))}
+        <sphereGeometry args={[0.045, 16, 16]} />
+        <meshBasicMaterial
+          color={selected ? '#ff4b45' : '#d62828'}
+          transparent
+          opacity={0.9}
+        />
       </mesh>
-    )
-  }
+      <Html center occlude={occlusionTargets} style={{ pointerEvents: 'none' }}>
+        <span className={`motor-hotspot-icon${selected ? ' is-selected' : ''}${hovered ? ' is-hovered' : ''}`}>
+          i
+        </span>
+      </Html>
+    </group>
+  )
+}
+
+function EngineModel({ onReady, onCapturePoint, selectedId, onSelect, hoveredId, onHover }) {
+  const modelRoot = useRef(null)
+  const { scene } = useGLTF(MODEL)
+  const modelSceneRef = useRef(scene)
+  const occlusionTargets = useMemo(() => [modelSceneRef], [modelSceneRef])
+  useEffect(() => {
+    modelSceneRef.current = scene
+    onReady()
+  }, [onReady, scene])
+
+  const handleModelClick = useCallback(event => {
+    if (!import.meta.env.DEV || !event.nativeEvent.altKey || !modelRoot.current) return
+
+    event.stopPropagation()
+    const localPoint = modelRoot.current.worldToLocal(event.point.clone())
+    onCapturePoint(localPoint.toArray().map(value => Number(value.toFixed(4))))
+  }, [onCapturePoint])
 
   return (
-    <group {...props}>
-      {object.children.map(child => (
-        <SceneNode key={child.uuid} object={child} onSelect={onSelect} />
+    <group ref={modelRoot}>
+      <primitive
+        object={scene}
+        onClick={import.meta.env.DEV ? handleModelClick : undefined}
+      />
+      {PUNTOS_VALIDOS.map(point => (
+        <Hotspot
+          key={point.id}
+          point={point}
+          occlusionTargets={occlusionTargets}
+          selected={selectedId === point.id}
+          hovered={hoveredId === point.id}
+          onSelect={onSelect}
+          onHover={onHover}
+        />
       ))}
     </group>
   )
 }
 
-function EngineModel({ onSelect, onReady }) {
-  const { scene } = useGLTF(MODEL)
-  useEffect(() => onReady(), [onReady, scene])
-  return <SceneNode object={scene} onSelect={onSelect} />
-}
-
-function SelectionMarker({ point }) {
-  if (!point) return null
-
-  return (
-    <group position={point}>
-      <mesh>
-        <sphereGeometry args={[0.025, 20, 20]} />
-        <meshBasicMaterial color="#b8ff9c" />
-      </mesh>
-      <mesh>
-        <sphereGeometry args={[0.055, 20, 20]} />
-        <meshBasicMaterial
-          color="#8cff75"
-          transparent
-          opacity={0.22}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-    </group>
-  )
-}
-
 export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
-  const [selected, setSelected] = useState(null)
+  const [selectedId, setSelectedId] = useState(null)
+  const [hoveredId, setHoveredId] = useState(null)
+  const [capturedPoint, setCapturedPoint] = useState(null)
+  const [copyMessage, setCopyMessage] = useState('')
   const [retryCount, setRetryCount] = useState(0)
   const [loadState, setLoadState] = useState({
     loading: true,
@@ -104,18 +131,37 @@ export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
     setRetryCount(count => count + 1)
   }, [])
 
+  const capturePoint = useCallback(point => {
+    setCapturedPoint(point)
+    setCopyMessage('')
+  }, [])
+
+  async function copyCapturedPoint() {
+    if (!capturedPoint) return
+
+    try {
+      await navigator.clipboard.writeText(`[${capturedPoint.join(', ')}]`)
+      setCopyMessage('Coordenadas copiadas.')
+    } catch (error) {
+      console.error('No se pudieron copiar las coordenadas:', error)
+      setCopyMessage('No se pudieron copiar automáticamente; selecciona y copia las coordenadas.')
+    }
+  }
+
+  const selectedPoint = PUNTOS_VALIDOS.find(point => point.id === selectedId)
+
   return (
     <section className="motor-viewer">
       <div className="motor-viewer-heading">
         <div>
           <span>MOTOR INTERACTIVO</span>
           <h2>Motor Honda D17A2</h2>
-          <p>Explora el motor. Gira el modelo y selecciona una zona.</p>
+          <p>Explora el motor completo. Gira y acerca el modelo.</p>
         </div>
         <span className="motor-format">MODELO 3D</span>
       </div>
 
-      <div className="motor-canvas">
+      <div className={`motor-canvas${hoveredId ? ' has-hotspot-hover' : ''}`}>
         <Canvas
           camera={{ position: [0, 1.5, 4], fov: 45 }}
           shadows
@@ -134,12 +180,18 @@ export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
             <Suspense fallback={null}>
               <Bounds fit clip observe margin={1.25}>
                 <Center>
-                  <EngineModel onSelect={setSelected} onReady={onModelReady} />
+                  <EngineModel
+                    onReady={onModelReady}
+                    onCapturePoint={capturePoint}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    hoveredId={hoveredId}
+                    onHover={setHoveredId}
+                  />
                 </Center>
               </Bounds>
             </Suspense>
 
-            <SelectionMarker point={selected?.point} />
             <OrbitControls
               makeDefault
               enableDamping
@@ -164,22 +216,40 @@ export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
       </div>
 
       <div className="motor-selection">
-        {selected ? (
-          <>
-            <span className="selection-dot" />
+        {selectedPoint ? (
+          <div className="motor-information" aria-live="polite">
             <div>
-              <strong>Zona seleccionada</strong>
-              <p>{selected.name}</p>
-              <small>
-                Posición: {selected.point.map(n => n.toFixed(2)).join(', ')}
-              </small>
+              <span>SISTEMA · {selectedPoint.sistema}</span>
+              <h3>{selectedPoint.nombre}</h3>
+              <p>{selectedPoint.descripcion}</p>
             </div>
-            <button onClick={() => setSelected(null)}>Limpiar</button>
-          </>
+            <button type="button" onClick={() => setSelectedId(null)}>
+              Quitar selección
+            </button>
+          </div>
         ) : (
-          <p>Haz clic sobre cualquier superficie del motor para marcarla.</p>
+          <>
+            <p>Selecciona una pieza resaltable para consultar su información.</p>
+            {PUNTOS_VALIDOS.length === 0 && (
+              <small>No hay ubicaciones confirmadas; el motor completo permanece visible.</small>
+            )}
+          </>
         )}
       </div>
+
+      {import.meta.env.DEV && (
+        <div className="motor-dev-capture" aria-live="polite">
+          <strong>Captura de coordenadas (desarrollo)</strong>
+          <p>Alt + clic sobre el motor para capturar la posición local de la superficie.</p>
+          {capturedPoint && (
+            <div className="motor-capture-result">
+              <code>[{capturedPoint.join(', ')}]</code>
+              <button type="button" onClick={copyCapturedPoint}>Copiar coordenadas</button>
+              {copyMessage && <small role="status">{copyMessage}</small>}
+            </div>
+          )}
+        </div>
+      )}
     </section>
   )
 }
