@@ -10,6 +10,12 @@ import {
     obtenerVehiculo
 } from './lib/vehiculos'
 import AdminPanel from './components/AdminPanel'
+import {
+    obtenerFavoritos,
+    agregarFavorito,
+    quitarFavorito
+} from './lib/favoritos'
+import './favoritos.css'
 
 const P = {
     search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
@@ -73,6 +79,51 @@ function Car() {
     )
 }
 
+function VehicleCard({ v, onOpen, onToggle, isFavorite, busy }) {
+    const carImage =
+        v.make?.toLowerCase() === 'volkswagen' &&
+        v.model?.toLowerCase().includes('passat')
+            ? '/models/images/Passat.png'
+            : '/models/images/Civic.png'
+
+    return (
+        <div className="favorite-card-shell">
+            <button type="button" className="card" onClick={onOpen}>
+                <div className="car-bg">
+                    <span>{v.year}</span>
+                    <img
+                        src={carImage}
+                        alt={`${v.make} ${v.model} ${v.year}`}
+                        className="catalog-car-image"
+                    />
+                </div>
+                <div className="card-info">
+                    <small>{v.make.toUpperCase()} · {(v.trim || '').toUpperCase()}</small>
+                    <h3>{v.model}</h3>
+                    <p>
+                        <Icon n="wrench" /> {v.engineCode}
+                        <span>{v.transmissions?.length ?? 0} transmisiones</span>
+                    </p>
+                </div>
+            </button>
+
+            <button
+                type="button"
+                className={`favorite-toggle ${isFavorite ? 'is-favorite' : ''}`}
+                aria-label={isFavorite
+                    ? `Quitar ${v.make} ${v.model} de favoritos`
+                    : `Guardar ${v.make} ${v.model} en favoritos`}
+                aria-pressed={isFavorite}
+                title={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                onClick={onToggle}
+                disabled={busy}
+            >
+                {isFavorite ? '♥' : '♡'}
+            </button>
+        </div>
+    )
+}
+
 function App() {
     const { user, logout, isAdmin } = useAuth()
     const [showAdmin, setShowAdmin] = useState(false)
@@ -88,6 +139,10 @@ function App() {
     const [year, Y] = useState('')
     const [error, E] = useState('')
     const [loading, L] = useState(true)
+    const [favoriteIds, setFavoriteIds] = useState([])
+    const [favoritesLoading, setFavoritesLoading] = useState(false)
+    const [favoriteBusyId, setFavoriteBusyId] = useState(null)
+    const [favoritesError, setFavoritesError] = useState('')
 
 
     useEffect(() => {
@@ -119,6 +174,69 @@ function App() {
         }
     }, [])
 
+
+    // Los favoritos se recuperan por cuenta y permanecen en Supabase.
+    useEffect(() => {
+        let active = true
+        setFavoritesError('')
+
+        if (!user?.id) {
+            setFavoriteIds([])
+            setFavoritesLoading(false)
+            return
+        }
+
+        setFavoriteIds([])
+        setFavoritesLoading(true)
+
+        obtenerFavoritos(user.id)
+            .then(ids => {
+                if (active) setFavoriteIds(ids)
+            })
+            .catch(error => {
+                if (!active) return
+                console.error('Error consultando favoritos:', error)
+                setFavoritesError('No se pudieron cargar tus favoritos.')
+            })
+            .finally(() => {
+                if (active) setFavoritesLoading(false)
+            })
+
+        return () => { active = false }
+    }, [user?.id])
+
+    async function toggleFavorite(vehiculoId) {
+        if (!user) {
+            setShowAuth(true)
+            return
+        }
+
+        if (favoriteBusyId !== null) return
+
+        const id = String(vehiculoId)
+        const exists = favoriteIds.includes(id)
+        setFavoritesError('')
+        setFavoriteBusyId(id)
+
+        try {
+            if (exists) {
+                await quitarFavorito(user.id, vehiculoId)
+                setFavoriteIds(previous => previous.filter(x => x !== id))
+            } else {
+                await agregarFavorito(user.id, vehiculoId)
+                setFavoriteIds(previous => previous.includes(id)
+                    ? previous
+                    : [...previous, id])
+            }
+        } catch (error) {
+            console.error('Error guardando favorito:', error)
+            setFavoritesError(error.message || 'No se pudo actualizar el favorito.')
+        } finally {
+            setFavoriteBusyId(null)
+        }
+    }
+
+    const favoriteCars = list.filter(v => favoriteIds.includes(String(v.id)))
 
     const makes = [...new Set(list.map(x => x.make))]
     const models = [...new Set(list.filter(x => !make || x.make === make).map(x => x.model))]
@@ -205,6 +323,11 @@ function App() {
                         <button onClick={() => go('documentos')}>
                             Biblioteca
                         </button>
+                        {user && (
+                            <button onClick={() => go('favoritos')}>
+                                ♥ Mis favoritos ({favoriteIds.length})
+                            </button>
+                        )}
                         {isAdmin && (
                             <button onClick={() => setShowAdmin(true)}>
                                 Administración
@@ -227,6 +350,8 @@ function App() {
                                         try {
                                             setAuthError('')
                                             await logout()
+                                            setShowAdmin(false)
+                                            go('catalogo')
                                         } catch (error) {
                                             setAuthError(
                                                 error.message ||
@@ -426,34 +551,20 @@ function App() {
 
                             <div className="results">
                                 {error && <p className="error">{error}</p>}
+                                {favoritesError && <p role="alert" className="error">{favoritesError}</p>}
                                 {loading ? (
                                     <p>Cargando catálogo…</p>
                                 ) : filtered.length ? (
                                     <div className="cards">
                                         {filtered.map(v => (
-                                            <button className="card" key={v.id} onClick={() => open(v)}>
-
-                                                <div className="car-bg">
-                                                    <span>{v.year}</span>
-
-                                                    <img
-                                                        src={v.make?.toLowerCase() === 'volkswagen' && v.model?.toLowerCase().includes('passat')
-                                                            ? '/models/images/Passat.png'
-                                                            : '/models/images/Civic.png'}
-                                                        alt={`${v.make} ${v.model} ${v.year}`}
-                                                        className="catalog-car-image"
-                                                    />
-                                                </div>
-
-                                                <div className="card-info">
-                                                    <small>{v.make.toUpperCase()} · {v.trim.toUpperCase()}</small>
-                                                    <h3>{v.model}</h3>
-                                                    <p>
-                                                        <Icon n="wrench" /> {v.engineCode}
-                                                        <span>{v.transmissions.length} transmisiones</span>
-                                                    </p>
-                                                </div>
-                                            </button>
+                                            <VehicleCard
+                                                key={v.id}
+                                                v={v}
+                                                onOpen={() => open(v)}
+                                                onToggle={() => toggleFavorite(v.id)}
+                                                isFavorite={favoriteIds.includes(String(v.id))}
+                                                busy={favoritesLoading || favoriteBusyId !== null}
+                                            />
                                         ))}
                                     </div>
                                 ) : (
@@ -463,6 +574,46 @@ function App() {
                         </div>
                     </main>
                 </>
+            ) : tab === 'favoritos' && user ? (
+                <main className="wrap catalog favorites-page">
+                    <div className="title">
+                        <div>
+                            <Label>TU BIBLIOTECA PERSONAL</Label>
+                            <h2>Mis vehículos favoritos</h2>
+                            <p>Vehículos guardados en tu cuenta de AutoLibrary.</p>
+                        </div>
+                        <b>{String(favoriteCars.length).padStart(2, '0')} FAVORITOS</b>
+                    </div>
+
+                    {favoritesError && (
+                        <p className="error" role="alert">{favoritesError}</p>
+                    )}
+
+                    {loading || favoritesLoading ? (
+                        <p>Cargando favoritos…</p>
+                    ) : favoriteCars.length ? (
+                        <div className="cards">
+                            {favoriteCars.map(v => (
+                                <VehicleCard
+                                    key={v.id}
+                                    v={v}
+                                    onOpen={() => open(v)}
+                                    onToggle={() => toggleFavorite(v.id)}
+                                    isFavorite={true}
+                                    busy={favoriteBusyId !== null}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="favorites-empty">
+                            <h3>Todavía no tienes vehículos favoritos</h3>
+                            <p>Explora el catálogo y utiliza el corazón para guardar uno.</p>
+                            <button className="primary" onClick={() => go('catalogo')}>
+                                Explorar catálogo <Icon n="arrow" />
+                            </button>
+                        </div>
+                    )}
+                </main>
             ) : (
                 <main className="wrap content">
                     <Label>{tab === 'mantenimiento' ? 'CUIDADO DEL VEHÍCULO' : 'BIBLIOTECA TÉCNICA'}</Label>

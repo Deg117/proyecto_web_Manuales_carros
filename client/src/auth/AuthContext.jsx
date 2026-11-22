@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
     const [profile, setProfile] = useState(null)
     const [profileLoading, setProfileLoading] = useState(true)
 
-    // Escuchar los cambios de autenticación
+    // Escuchar cambios de autenticación
     useEffect(() => {
         let active = true
 
@@ -57,7 +57,7 @@ export function AuthProvider({ children }) {
         }
     }, [])
 
-    // Obtener el perfil desde Supabase
+    // Obtener perfil del usuario desde Supabase
     useEffect(() => {
         let active = true
 
@@ -87,7 +87,6 @@ export function AuthProvider({ children }) {
                         'Error cargando perfil:',
                         error
                     )
-
                     setProfile(null)
                 } else {
                     setProfile(data)
@@ -99,7 +98,6 @@ export function AuthProvider({ children }) {
                     'Error inesperado cargando perfil:',
                     error
                 )
-
                 setProfile(null)
             } finally {
                 if (active) {
@@ -124,7 +122,6 @@ export function AuthProvider({ children }) {
             })
 
         if (error) throw error
-
         return data
     }
 
@@ -141,7 +138,6 @@ export function AuthProvider({ children }) {
         })
 
         if (error) throw error
-
         return data
     }
 
@@ -152,7 +148,7 @@ export function AuthProvider({ children }) {
         if (error) throw error
     }
 
-    // Comprobar permisos de administrador
+    // Verificar si el usuario es administrador
     const isAdmin = Boolean(
         session?.user &&
         profile?.id === session.user.id &&
@@ -179,7 +175,7 @@ export function AuthProvider({ children }) {
     )
 }
 
-// Hook para utilizar autenticación
+// Hook de autenticación
 export function useAuth() {
     const context = useContext(AuthContext)
 
