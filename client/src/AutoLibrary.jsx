@@ -3,12 +3,13 @@ import './AutoLibrary.css'
 import MotorViewer from './components/MotorViewer'
 import CarViewer from './components/CarViewer'
 import PassatViewer from './components/PassatViewer'
-
+import { useAuth } from './auth/AuthContext'
+import AuthForm from './auth/AuthForm'
 import {
     obtenerVehiculos,
     obtenerVehiculo
 } from './lib/vehiculos'
-
+import AdminPanel from './components/AdminPanel'
 
 const P = {
     search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
@@ -73,6 +74,10 @@ function Car() {
 }
 
 function App() {
+    const { user, logout, isAdmin } = useAuth()
+    const [showAdmin, setShowAdmin] = useState(false)
+    const [showAuth, setShowAuth] = useState(false)
+    const [authError, setAuthError] = useState('')
     const [list, S] = useState([])
     const [car, C] = useState(null)
     const [gear, G] = useState('Automática')
@@ -183,17 +188,82 @@ function App() {
 
     return (
         <div className="autolibrary">
+
             <header>
                 <div className="nav">
                     <Logo />
+
                     <nav>
-                        <button onClick={() => go('catalogo')}>Explorar</button>
-                        <button onClick={() => go('mantenimiento')}>Mantenimiento</button>
-                        <button onClick={() => go('documentos')}>Biblioteca</button>
+                        <button onClick={() => go('catalogo')}>
+                            Explorar
+                        </button>
+
+                        <button onClick={() => go('mantenimiento')}>
+                            Mantenimiento
+                        </button>
+
+                        <button onClick={() => go('documentos')}>
+                            Biblioteca
+                        </button>
+                        {isAdmin && (
+                            <button onClick={() => setShowAdmin(true)}>
+                                Administración
+                            </button>
+                        )}
                     </nav>
-                    <span className="open">● Biblioteca abierta</span>
+
+                    <div className="nav-account">
+                        {user ? (
+                            <>
+                                <span className="nav-username">
+                                    {user.user_metadata?.full_name ||
+                                        user.email?.split('@')[0] ||
+                                        'Usuario'}
+                                </span>
+
+                                <button
+                                    className="nav-logout"
+                                    onClick={async () => {
+                                        try {
+                                            setAuthError('')
+                                            await logout()
+                                        } catch (error) {
+                                            setAuthError(
+                                                error.message ||
+                                                'No se pudo cerrar sesión'
+                                            )
+                                        }
+                                    }}
+                                >
+                                    Cerrar sesión
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                className="nav-login"
+                                onClick={() => setShowAuth(true)}
+                            >
+                                Iniciar sesión
+                            </button>
+                        )}
+                    </div>
                 </div>
             </header>
+
+            {authError && (
+                <p role="alert" className="auth-nav-error">
+                    {authError}
+                </p>
+            )}
+
+            {showAuth && !user && (
+                <AuthForm onClose={() => setShowAuth(false)} />
+            )}
+
+            {showAdmin && isAdmin && (
+                <AdminPanel onClose={() => setShowAdmin(false)} />
+            )}
+
 
             {car ? (
                 <main className="wrap detail-page">
