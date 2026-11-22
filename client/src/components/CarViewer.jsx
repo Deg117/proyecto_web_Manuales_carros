@@ -4,7 +4,8 @@ import { Bounds, Center, OrbitControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import './CarViewer.css'
 
-const MODEL = '/models/civic-2003/car/civic_pbr.glb'
+const CIVIC_MODEL = '/models/civic-2003/car/civic_pbr.glb'
+export const HYUNDAI_I10_MODEL = '/models/hyundai_i10/car/base_basic_pbr.glb'
 
 function SceneNode({ object, onSelect }) {
   const props = {
@@ -46,8 +47,8 @@ function SceneNode({ object, onSelect }) {
   )
 }
 
-function CarModel({ onSelect }) {
-  const { scene } = useGLTF(MODEL)
+function CarModel({ modelPath, onSelect }) {
+  const { scene } = useGLTF(modelPath)
   return <SceneNode object={scene} onSelect={onSelect} />
 }
 
@@ -73,7 +74,7 @@ function SelectionMarker({ point }) {
   )
 }
 
-export default function CarViewer() {
+export default function CarViewer({ modelPath = CIVIC_MODEL }) {
   const [selected, setSelected] = useState(null)
 
   return (
@@ -92,7 +93,7 @@ export default function CarViewer() {
           <Suspense fallback={null}>
             <Bounds fit clip observe margin={1.25}>
               <Center>
-                <CarModel onSelect={setSelected} />
+                <CarModel modelPath={modelPath} onSelect={setSelected} />
               </Center>
             </Bounds>
           </Suspense>
@@ -118,4 +119,4 @@ export default function CarViewer() {
   )
 }
 
-useGLTF.preload(MODEL)
+useGLTF.preload(CIVIC_MODEL)

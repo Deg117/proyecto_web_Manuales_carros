@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import './AutoLibrary.css'
 import MotorViewer from './components/MotorViewer'
-import CarViewer from './components/CarViewer'
+import CarViewer, { HYUNDAI_I10_MODEL } from './components/CarViewer'
 import PassatViewer from './components/PassatViewer'
 import { useAuth } from './auth/AuthContext'
 import AuthForm from './auth/AuthForm'
@@ -16,6 +16,32 @@ import {
     quitarFavorito
 } from './lib/favoritos'
 import './favoritos.css'
+
+const LOCAL_HYUNDAI_I10 = {
+    id: 'local-hyundai-i10',
+    make: 'Hyundai',
+    model: 'i10',
+    year: null,
+    trim: '',
+    engineCode: '',
+    displacementL: null,
+    fuel: '',
+    description: '',
+    imageUrl: '',
+    bodyStyle: '',
+    transmissions: [],
+    specifications: [],
+    localOnly: true,
+}
+
+function includeHyundaiI10(vehicles) {
+    const alreadyRegistered = vehicles.some(vehicle =>
+        vehicle.make?.toLowerCase() === 'hyundai' &&
+        vehicle.model?.toLowerCase().includes('i10')
+    )
+
+    return alreadyRegistered ? vehicles : [...vehicles, LOCAL_HYUNDAI_I10]
+}
 
 const P = {
     search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
@@ -84,25 +110,36 @@ function VehicleCard({ v, onOpen, onToggle, isFavorite, busy }) {
         v.make?.toLowerCase() === 'volkswagen' &&
         v.model?.toLowerCase().includes('passat')
             ? '/models/images/Passat.png'
-            : '/models/images/Civic.png'
+            : v.localOnly
+                ? null
+                : '/models/images/Civic.png'
 
     return (
         <div className="favorite-card-shell">
             <button type="button" className="card" onClick={onOpen}>
                 <div className="car-bg">
                     <span>{v.year}</span>
-                    <img
-                        src={carImage}
-                        alt={`${v.make} ${v.model} ${v.year}`}
-                        className="catalog-car-image"
-                    />
+                    {carImage && (
+                        <img
+                            src={carImage}
+                            alt={`${v.make} ${v.model} ${v.year}`}
+                            className="catalog-car-image"
+                        />
+                    )}
                 </div>
                 <div className="card-info">
-                    <small>{v.make.toUpperCase()} · {(v.trim || '').toUpperCase()}</small>
+                    <small>
+                        {v.make.toUpperCase()}
+                        {v.trim ? ` · ${v.trim.toUpperCase()}` : ''}
+                    </small>
                     <h3>{v.model}</h3>
                     <p>
-                        <Icon n="wrench" /> {v.engineCode}
-                        <span>{v.transmissions?.length ?? 0} transmisiones</span>
+                        <Icon n="wrench" /> {v.engineCode || 'Datos técnicos no registrados'}
+                        <span>
+                            {v.transmissions?.length
+                                ? `${v.transmissions.length} transmisiones`
+                                : 'Transmisión no registrada'}
+                        </span>
                     </p>
                 </div>
             </button>
@@ -155,11 +192,12 @@ function App() {
 
                 const vehiculos = await obtenerVehiculos()
 
-                if (activo) S(vehiculos)
+                if (activo) S(includeHyundaiI10(vehiculos))
             } catch (error) {
                 console.error('Error de Supabase:', error)
 
                 if (activo) {
+                    S([LOCAL_HYUNDAI_I10])
                     E('No se pudieron cargar los vehículos desde Supabase.')
                 }
             } finally {
@@ -242,7 +280,13 @@ function App() {
     const models = [...new Set(list.filter(x => !make || x.make === make).map(x => x.model))]
     const years = [...new Set(
         list
-            .filter(x => (!make || x.make === make) && (!model || x.model === model))
+            .filter(x =>
+                (!make || x.make === make) &&
+                (!model || x.model === model) &&
+                x.year !== null &&
+                x.year !== undefined &&
+                x.year !== ''
+            )
             .map(x => x.year)
     )]
 
@@ -263,10 +307,12 @@ function App() {
         G(
             v.transmissions.includes('Automática')
                 ? 'Automática'
-                : v.transmissions[0]
+                : v.transmissions[0] || 'No especificada'
         )
 
         T('catalogo')
+
+        if (v.localOnly) return
 
         try {
             const vehiculo = await obtenerVehiculo(v.id)
@@ -303,6 +349,11 @@ function App() {
         car.make?.toLowerCase() === 'volkswagen' &&
         car.model?.toLowerCase().includes('passat') &&
         Number(car.year) === 2010
+
+    const isHyundaiI10 =
+        car &&
+        car.make?.toLowerCase() === 'hyundai' &&
+        car.model?.toLowerCase().includes('i10')
 
     return (
         <div className="autolibrary">
@@ -407,18 +458,24 @@ function App() {
                             <Label>FICHA DEL VEHÍCULO</Label>
                             <h1>
                                 {car.make} <em>{car.model}</em>
-                                <br />
-                                {car.year} <small>{car.trim}</small>
+                                {(car.year || car.trim) && (
+                                    <>
+                                        <br />
+                                        {car.year} <small>{car.trim}</small>
+                                    </>
+                                )}
                             </h1>
                             <p>Información técnica y de servicio, reunida en un solo lugar.</p>
                             <p className="tags">
                                 <Icon n="car" /> {car.bodyStyle || 'Automóvil'}
-                                <Icon n="wrench" /> Motor {car.engineCode}
+                                <Icon n="wrench" /> {car.engineCode || 'Motor no registrado'}
                             </p>
                         </div>
                         <div className="art">
                             {isCivic2003 ? (
                                 <CarViewer />
+                            ) : isHyundaiI10 ? (
+                                <CarViewer modelPath={HYUNDAI_I10_MODEL} />
                             ) : isPassat2010 ? (
                                 <PassatViewer modelPath="/models/passat_2010/car/base_basic_shaded.glb" />
                             ) : (
@@ -748,7 +805,7 @@ function Content({ car, gear, tab }) {
             <div className="spec-grid">
                 <Spec
                     label="MOTOR"
-                    value={car.motor?.codigo || car.engineCode}
+                    value={car.motor?.codigo || car.engineCode || 'No registrado'}
                     detail={
                         car.motor?.cilindrada_cc
                             ? `${car.motor.cilindrada_cc} cc`
@@ -758,7 +815,7 @@ function Content({ car, gear, tab }) {
 
                 <Spec
                     label="TRANSMISIÓN"
-                    value={gear}
+                    value={gear || 'No registrada'}
                     detail={
                         car.transmisiones?.find(t => t.tipo === gear)
                             ? `${car.transmisiones.find(t => t.tipo === gear)
