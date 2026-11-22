@@ -8,12 +8,18 @@ Biblioteca digital automotriz en español. El proyecto actual contiene un fronte
 - Ficha del Honda Civic 2003 EX con motor D17A2.
 - Selector de transmisión automática o manual.
 - Secciones de especificaciones, mantenimiento y documentos.
-- Estados explícitos para la información de mantenimiento pendiente y los manuales/diagramas aún no incorporados.
+- Sección de documentos conectada a los registros asociados al vehículo en Supabase.
 - API que consulta datos de prueba en memoria sin requerir PostgreSQL.
 - Esquema y semilla SQL para cambiar el repositorio a PostgreSQL más adelante.
 - Diseño adaptable a escritorio y móvil, con interfaz en español.
 
 Los datos ampliados de especificaciones y los intervalos de mantenimiento siguen pendientes de validación. No se incluyen manuales ni diagramas ficticios.
+
+## Manuales PDF
+
+La sección Documentos consulta `public.documentos` mediante la relación del vehículo seleccionado. Configura `VITE_R2_MANUALES_BASE_URL` en el entorno de `client/` con la URL pública base del bucket `autolibrary-manuales`; no reutilices `VITE_R2_BASE_URL`, que corresponde a los modelos 3D.
+
+`database/insertar_manuales.sql` contiene inserciones idempotentes para los IDs verificados del Honda Civic 2003 D17A2 y el Ford Fiesta 2014. El script no se ejecuta desde la aplicación: revísalo y ejecútalo manualmente en Supabase para que los PDF aparezcan. No elimina ni actualiza documentos existentes.
 
 ## Estructura del proyecto
 

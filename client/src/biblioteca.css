@@ -10,6 +10,24 @@
 .biblioteca-card p{color:#a1aab8;font-size:13px;line-height:1.6;margin:8px 0 14px}
 .biblioteca-card a,.biblioteca-card button{display:inline-block;background:#d62828;color:white;border:0;border-radius:8px;padding:10px 13px;font:inherit;font-size:12px;text-decoration:none;cursor:pointer}
 .biblioteca-card a:hover,.biblioteca-card button:hover{background:#b91c1c}
+.biblioteca-actions{display:flex;flex-wrap:wrap;gap:10px}
+.biblioteca-error{color:#ff9b9b!important}
 .biblioteca-detail{margin-top:15px;padding-top:12px;border-top:1px solid #2a313c}
 .biblioteca-detail strong{color:#f3f4f6}
 @media(max-width:600px){.biblioteca-grid{grid-template-columns:1fr}}
+
+/* Ficha de servicio: Civic D17A2 */
+.servicio-tecnico{color:#dfe3ea;margin:14px 0}
+.servicio-datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:15px 0}
+.servicio-datos>div{background:#161a20;border:1px solid #2a313c;padding:12px;border-radius:9px}
+.servicio-datos small{color:#ff6262;font-size:10px;letter-spacing:.06em}
+.servicio-datos strong{display:block;margin-top:8px;font-size:13px}
+.servicio-tecnico h4{font-size:14px;margin:19px 0 9px;color:#f3f4f6}
+.servicio-tecnico ul,.servicio-tecnico ol{padding-left:21px;color:#c6cbd4;font-size:13px;line-height:1.8}
+.servicio-tecnico li{margin-bottom:6px}
+.biblioteca-card .servicio-nota{border-left:3px solid #d62828;padding-left:12px;color:#c6cbd4}
+
+/* Aclaraciones específicas según transmisión seleccionada */
+.servicio-transmision{padding:13px 16px;border:1px solid #343d49;border-radius:10px;background:#161a20;margin:14px 0}
+.servicio-transmision h4{margin:0 0 8px;color:#f3f4f6;font-size:14px}
+.biblioteca-card .servicio-transmision p{margin:0;color:#c6cbd4;line-height:1.7}

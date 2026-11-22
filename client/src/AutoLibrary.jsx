@@ -21,6 +21,23 @@ import {
 import './favoritos.css'
 import './biblioteca.css'
 
+function getDocumentUrl(filePath) {
+    const path = filePath?.trim()
+    if (!path) return null
+    if (/^https?:\/\//i.test(path)) return path
+
+    const baseUrl = import.meta.env.VITE_R2_MANUALES_BASE_URL?.trim().replace(/\/+$/, '')
+    return baseUrl ? `${baseUrl}/${path.replace(/^\/+/, '')}` : null
+}
+
+function documentUrlError(filePath) {
+    if (filePath && !/^https?:\/\//i.test(filePath.trim()) && !import.meta.env.VITE_R2_MANUALES_BASE_URL?.trim()) {
+        return 'Falta configurar la variable VITE_R2_MANUALES_BASE_URL para acceder a los manuales PDF.'
+    }
+
+    return 'No se pudo acceder al PDF en Cloudflare R2. Verifica que el archivo exista y que el bucket permita solicitudes desde este sitio.'
+}
+
 function isCamaro1972(vehicle) {
     return vehicle?.make?.toLowerCase() === 'chevrolet' &&
         vehicle.model?.toLowerCase().includes('camaro') &&
@@ -724,18 +741,6 @@ function Filter({ label, value, options, empty, change }) {
     )
 }
 
-// Referencias iniciales: enlaces externos, no copias alojadas de los PDF.
-const MANUALES_OFICIALES = {
-    civic2003: [{
-        id: 'honda-civic-2003-propietario',
-        titulo: 'Manual del propietario — Civic Sedán 2003',
-        categoria: 'Manual del propietario',
-        descripcion: 'Documento oficial de Honda en inglés. Incluye uso, seguridad y mantenimiento.',
-        archivo_url: 'https://techinfo.honda.com/rjanisis/pubs/om/CI0303/CI0303MAINIXB.pdf',
-        fuente: 'Honda'
-    }],
-}
-
 const GUIAS_MANTENIMIENTO = [
     { id: 'aceite', titulo: 'Aceite y filtro de motor', sistema: 'Motor', resumen: 'Verificar nivel, especificación de aceite, filtro e intervalo aplicable.', precaucion: 'No trabajar sobre piezas calientes; desechar el aceite en un centro de acopio.' },
     { id: 'aire', titulo: 'Filtro de aire', sistema: 'Admisión', resumen: 'Inspección del elemento filtrante y revisión de la caja del filtro.' },
@@ -747,13 +752,84 @@ const GUIAS_MANTENIMIENTO = [
     { id: 'fusibles', titulo: 'Fusibles y sistema eléctrico', sistema: 'Eléctrico', resumen: 'Localizar cajas de fusibles y consultar el amperaje correspondiente.', precaucion: 'Nunca sustituir un fusible por uno de amperaje superior.' }
 ]
 
+// Fichas técnicas iniciales para el Civic EX 2003 D17A2 (EE. UU.).
+// Los procedimientos son resúmenes de orientación; no sustituyen las precauciones del fabricante.
+const SERVICIOS_CIVIC_D17A2 = {
+    aire: {
+        datos: [['INTERVALO NORMAL', '48,000 km'], ['USO CON POLVO', '24,000 km']],
+        nota: 'El intervalo más corto aplica cuando el vehículo circula en ambientes polvorientos. Reemplaza antes si el filtro está dañado o muy contaminado.',
+        materiales: ['Elemento filtrante compatible con Civic EX 2003 1.7 L D17A2.', 'Destornillador o herramienta adecuada para los sujetadores de la caja de aire.', 'Paño limpio para retirar suciedad de la carcasa.'],
+        pasos: ['Apaga el motor y abre el cofre.', 'Localiza la caja del filtro de aire del motor.', 'Libera sus sujetadores sin forzar las conexiones o conductos.', 'Retira el filtro usado y comprueba el estado de su sello y de la carcasa.', 'Limpia con cuidado la suciedad acumulada, evitando que entre en la admisión.', 'Coloca el elemento nuevo en la misma orientación y asegúrate de que selle correctamente.', 'Cierra la caja y comprueba que los sujetadores y conductos queden firmes.'],
+        aviso: 'No hagas funcionar el motor sin el elemento filtrante instalado.'
+    },
+    bujias: {
+        datos: [['INTERVALO DE SUSTITUCIÓN', '176,000 km (110,000 mi)'], ['MOTOR', 'D17A2 · 4 cilindros']],
+        nota: 'Utiliza bujías de la referencia y grado térmico aprobados para el motor exacto. La separación y el torque deben verificarse antes de instalarlas; no se asigna un valor genérico.',
+        materiales: ['Juego de cuatro bujías compatibles con el D17A2.', 'Dado para bujías, extensión y matraca.', 'Llave dinamométrica apropiada.', 'Aire o cepillo para retirar suciedad alrededor de los pozos, sin introducirla en el motor.'],
+        pasos: ['Estaciona, apaga el motor y deja enfriar completamente la culata.', 'Localiza las bobinas de encendido y desconecta cuidadosamente sus conectores.', 'Retira los tornillos de sujeción y extrae las bobinas sin tirar de los cables.', 'Limpia la zona alrededor de los pozos para impedir que caiga suciedad a los cilindros.', 'Retira una bujía a la vez y verifica la referencia de la nueva.', 'Enrosca primero la bujía nueva a mano para evitar dañar la rosca de la culata.', 'Aprieta con llave dinamométrica al valor especificado para la bujía y motor.', 'Reinstala las bobinas y conectores; arranca y verifica un funcionamiento uniforme.'],
+        aviso: 'No cambies bujías con la culata caliente ni fuerces una rosca que ofrezca resistencia.'
+    },
+    refrigerante: {
+        datos: [['PRIMER CAMBIO', '192,000 km o 10 años'], ['CAMBIOS POSTERIORES', '96,000 km o 5 años'], ['TIPO', 'Honda Type 2 o equivalente aprobado']],
+        nota: 'Se aplica el plazo o kilometraje que ocurra primero. Si desconoces el historial del vehículo, inspecciona el sistema antes de decidir el servicio.',
+        materiales: ['Refrigerante Honda All Season Antifreeze/Coolant Type 2 o producto aprobado para esta aplicación.', 'Recipiente de recuperación y embudo limpio.', 'Guantes y equipo de protección.', 'Herramientas y equipo de purga adecuados para el procedimiento específico.'],
+        pasos: ['Deja enfriar completamente el motor; nunca abras el sistema bajo presión.', 'Comprueba visualmente mangueras, abrazaderas, radiador, depósito y posibles fugas.', 'Verifica el nivel en el depósito de expansión y el estado del refrigerante.', 'Para un reemplazo completo, utiliza el procedimiento de drenado y purga específico del motor D17A2.', 'Llena con el refrigerante aprobado evitando mezclar fórmulas incompatibles.', 'Purga el aire según el procedimiento del fabricante y controla la temperatura del motor.', 'Comprueba que no haya fugas y vuelve a revisar el nivel después del enfriamiento completo.', 'Entrega el refrigerante usado a un gestor autorizado.'],
+        aviso: 'El refrigerante es tóxico. No abras la tapa del radiador en caliente y no dejes residuos al alcance de animales o niños.'
+    },
+    distribucion: {
+        datos: [['SISTEMA', 'Correa de distribución'], ['INTERVALO NORMAL', '176,000 km o 7 años'], ['CONDICIONES EXTREMAS', 'Consultar pauta especial Honda']],
+        nota: 'El motor D17A2 utiliza correa de distribución. Se recomienda inspeccionar también el tensor y la bomba de agua durante el servicio. En temperaturas extremas Honda establece una sustitución anticipada; comprobar las condiciones y el historial antes de decidir el intervalo.',
+        materiales: ['Kit de distribución compatible con el motor D17A2 (correa y componentes correspondientes).', 'Elementos de inspección del tensor y bomba de agua; repuestos cuando corresponda.', 'Herramientas de sincronización, sujeción, elevación y llave dinamométrica específicas del procedimiento.', 'Sellos y refrigerante aprobados si el trabajo incluye componentes del sistema de refrigeración.'],
+        pasos: ['Identifica el motor D17A2 y confirma cuándo se reemplazó la correa por última vez.', 'Inspecciona externamente posibles fugas, ruidos anormales y el estado de las tapas de distribución.', 'Programa el reemplazo de la correa y la revisión del tensor y la bomba de agua con un técnico especializado.', 'Antes del desmontaje se deben verificar las marcas de sincronización, el soporte del motor y el método de inmovilización especificado.', 'Después del armado, el especialista debe comprobar la sincronización, los aprietes y la ausencia de fugas antes de poner en funcionamiento el motor.', 'Registra fecha, kilometraje y piezas reemplazadas para planificar el próximo servicio.'],
+        aviso: 'Procedimiento de alta complejidad: una sincronización incorrecta puede causar daño interno. Esta ficha es una guía de planificación, no instrucciones suficientes para desmontar o sincronizar el motor.'
+    },
+    transmision: {
+        datos: [['CAJA', 'Seleccionar transmisión'], ['AUTOMÁTICA', 'Honda ATF-Z1 (especificación original)'], ['MANUAL', 'Honda Manual Transmission Fluid (MTF)']],
+        nota: 'El Civic EX 2003 se ofreció con transmisión manual de cinco velocidades o automática. El fluido, la ubicación del tapón y la verificación del nivel son diferentes. No intercambies ATF y MTF.',
+        materiales: ['Fluido Honda compatible con la transmisión específica.', 'Recipiente de recuperación, embudo y herramienta de llenado adecuada.', 'Arandelas o sellos nuevos cuando lo indique el procedimiento de servicio.', 'Herramienta para tapones y soportes homologados si se eleva el vehículo.'],
+        pasos: ['Confirma qué caja está instalada y consulta su historial de servicio.', 'Inspecciona fugas, cambios anormales y la condición externa de retenes y conexiones.', 'Verifica el fluido especificado antes de abrir cualquier tapón.', 'Mantén el vehículo nivelado y utiliza el método de comprobación de nivel correspondiente a la caja.', 'Para el reemplazo, sigue el procedimiento de drenado y llenado específico; evita sobrellenar.', 'Revisa fugas y funcionamiento después del servicio y registra el kilometraje.'],
+        aviso: 'No utilices un fluido universal sin compatibilidad documentada. El aceite del motor no sustituye de manera permanente al Honda MTF.'
+    },
+    frenos: {
+        datos: [['LÍQUIDO', 'Honda DOT 3 recomendado'], ['REEMPLAZO DEL FLUIDO', 'Cada 3 años'], ['INSPECCIÓN', 'Según programa y condición']],
+        nota: 'El cambio de líquido se determina por tiempo independientemente del kilometraje. Pastillas, discos, líneas y cilindros se inspeccionan y se sustituyen según su desgaste y estado; no existe un kilometraje único para todas las pastillas.',
+        materiales: ['Líquido de frenos DOT 3 nuevo, de envase sellado, compatible con la especificación Honda.', 'Equipo de revisión de espesor y estado de pastillas, discos, tuberías y flexibles.', 'Equipo de purga apropiado si se va a renovar el líquido.', 'Guantes, protección ocular y materiales para limpiar derrames.'],
+        pasos: ['Con el automóvil inmóvil y asegurado, comprueba el nivel del depósito y observa si existen fugas.', 'Inspecciona pastillas, discos y componentes de frenado sin contaminar las superficies de fricción.', 'Comprueba el estado de latiguillos, conexiones y el funcionamiento del freno de estacionamiento.', 'Si corresponde cambiar el líquido, utiliza el procedimiento de purga adecuado para la configuración del vehículo, incluyendo ABS cuando aplique.', 'Verifica el tacto del pedal, la ausencia de fugas y el comportamiento del sistema antes de circular.', 'Ante vibraciones intensas, pedal esponjoso o pérdida de eficacia, no conduzcas hasta que se repare.'],
+        aviso: 'Sistema de seguridad crítica. La apertura del circuito hidráulico y la purga deben realizarse con el procedimiento correcto; una intervención deficiente puede reducir o eliminar la capacidad de frenado.'
+    },
+    fusibles: {
+        datos: [['SISTEMA', 'Protección eléctrica'], ['UBICACIONES', 'Habitáculo y compartimento del motor'], ['SUSTITUCIÓN', 'Mismo amperaje y formato']],
+        nota: 'Las asignaciones de fusibles dependen del equipamiento y la configuración del Civic. El diagrama de la tapa y la identificación del circuito tienen prioridad antes de sustituirlo.',
+        materiales: ['Extractor de fusibles adecuado.', 'Fusible de reemplazo del mismo tipo y amperaje que el original.', 'Linterna y, para diagnóstico, multímetro con uso correcto.'],
+        pasos: ['Apaga el vehículo y el circuito afectado; retira la llave.', 'Localiza la caja de fusibles del habitáculo o del compartimento del motor.', 'Identifica el circuito en el diagrama y verifica que el fusible corresponda a la función afectada.', 'Extrae el fusible sin dañar los terminales y comprueba visualmente o con un medidor si está abierto.', 'Instala únicamente un fusible del mismo amperaje y formato.', 'Prueba el circuito. Si el fusible se vuelve a fundir, detén las pruebas y busca la causa eléctrica.', 'Registra el circuito y la reparación realizada.'],
+        aviso: 'Nunca aumentes el amperaje, uses puentes de alambre o manipules cableado dañado energizado. Un fusible que falla repetidamente indica una avería que requiere diagnóstico.'
+    }
+}
+
+function FichaServicioCivic({ ficha }) {
+    return (
+        <div className="servicio-tecnico">
+            <div className="servicio-datos">
+                {ficha.datos.map(([etiqueta, valor]) => (
+                    <div key={etiqueta}><small>{etiqueta}</small><strong>{valor}</strong></div>
+                ))}
+            </div>
+            <p className="servicio-nota">{ficha.nota}</p>
+            <h4>Materiales y herramientas</h4>
+            <ul>{ficha.materiales.map((texto, i) => <li key={i}>{texto}</li>)}</ul>
+            <h4>Procedimiento general</h4>
+            <ol>{ficha.pasos.map((texto, i) => <li key={i}>{texto}</li>)}</ol>
+            <p className="servicio-nota"><strong>Precaución:</strong> {ficha.aviso}</p>
+        </div>
+    )
+}
+
 function MantenimientoBiblioteca({ car, gear }) {
     const [busqueda, setBusqueda] = useState('')
     const [activo, setActivo] = useState(null)
     const visibles = GUIAS_MANTENIMIENTO.filter(item =>
         `${item.titulo} ${item.sistema}`.toLowerCase().includes(busqueda.toLowerCase())
     )
-    const manual = isCivic2003(car) ? MANUALES_OFICIALES.civic2003[0] : null
     return (
         <section className="panel biblioteca-section">
             <Label>MANTENIMIENTO</Label>
@@ -774,9 +850,57 @@ function MantenimientoBiblioteca({ car, gear }) {
                         </button>
                         {activo === item.id && (
                             <div className="biblioteca-detail">
-                                <p><strong>Intervalo y especificaciones:</strong> pendientes de validación para este vehículo.</p>
+                                {item.id === 'aceite' && isCivic2003(car) ? (
+                                    <div className="servicio-tecnico">
+                                        <div className="servicio-datos">
+                                            <div><small>VISCOSIDAD</small><strong>SAE 5W-20</strong></div>
+                                            <div><small>CAPACIDAD CON FILTRO</small><strong>3.5 L aprox. (3.7 US qt)</strong></div>
+                                            <div><small>USO SEVERO · ACEITE</small><strong>8,000 km o 6 meses</strong></div>
+                                            <div><small>USO NORMAL</small><strong>Según programa por distancia y tiempo</strong></div>
+                                        </div>
+                                        <p className="servicio-nota">Datos de referencia del manual del propietario para Civic EX 2003 (EE. UU.). Existe una discrepancia histórica entre documentos Honda respecto a la capacidad: añade aceite gradualmente y comprueba el nivel con la varilla. No sobrellenes.</p>
+                                        <h4>Materiales y herramientas</h4>
+                                        <ul>
+                                            <li>Aceite para motor SAE 5W-20 que cumpla la especificación indicada en el manual.</li>
+                                            <li>Filtro de aceite compatible con Civic EX 2003 D17A2.</li>
+                                            <li>Arandela nueva para el tornillo de drenaje.</li>
+                                            <li>Recipiente para aceite usado, embudo, guantes y herramienta para el filtro.</li>
+                                            <li>Llave dinamométrica y medios seguros para elevar y sostener el vehículo si fuera necesario.</li>
+                                        </ul>
+                                        <h4>Procedimiento general</h4>
+                                        <ol>
+                                            <li>Estaciona sobre suelo nivelado, aplica el freno de estacionamiento y apaga el motor. Evita superficies calientes.</li>
+                                            <li>Abre la tapa de llenado y coloca el recipiente debajo del cárter.</li>
+                                            <li>Retira el tornillo de drenaje y deja salir el aceite.</li>
+                                            <li>Instala una arandela nueva y aprieta el tornillo al torque indicado por el manual de servicio.</li>
+                                            <li>Cambia el filtro, lubricando la junta y ajustándolo según sus indicaciones.</li>
+                                            <li>Agrega aceite gradualmente y revisa el nivel con la varilla.</li>
+                                            <li>Arranca y verifica que la luz de presión de aceite se apague. Comprueba que no existan fugas.</li>
+                                            <li>Apaga, espera unos minutos y revisa nuevamente el nivel sin exceder la marca superior.</li>
+                                            <li>Entrega el aceite y filtro usados a un centro de acopio autorizado.</li>
+                                        </ol>
+                                        <p className="servicio-nota">El cambio del filtro sigue las entradas correspondientes del programa de mantenimiento; no necesariamente coincide con cada cambio de aceite. La periodicidad depende de las condiciones normales o severas de operación.</p>
+                                    </div>
+                                ) : isCivic2003(car) && SERVICIOS_CIVIC_D17A2[item.id] ? (
+                                    <>
+                                        <FichaServicioCivic ficha={SERVICIOS_CIVIC_D17A2[item.id]} />
+                                        {item.id === 'transmision' && (
+                                            <div className="servicio-transmision" role="note">
+                                                <h4>Datos de tu transmisión seleccionada</h4>
+                                                {gear?.toLowerCase().includes('autom') ? (
+                                                    <p><strong>Automática:</strong> especificación original Honda ATF-Z1; Honda DW-1 es su reemplazo moderno compatible. No usar Honda MTF. Comprueba el procedimiento de nivel y el intervalo correspondiente a transmisión automática.</p>
+                                                ) : gear?.toLowerCase().includes('manual') ? (
+                                                    <p><strong>Manual:</strong> utiliza Honda Manual Transmission Fluid (MTF). No usar ATF-Z1 ni DW-1. Comprueba el nivel mediante el procedimiento del tapón de llenado de esta caja.</p>
+                                                ) : (
+                                                    <p>Selecciona primero <strong>Automática</strong> o <strong>Manual</strong> en la ficha del vehículo para consultar la recomendación específica.</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p><strong>Intervalo y especificaciones:</strong> pendientes de validación para este vehículo.</p>
+                                )}
                                 {item.precaucion && <p><strong>Precaución:</strong> {item.precaucion}</p>}
-                                {manual && <a href={manual.archivo_url} target="_blank" rel="noopener noreferrer">Consultar manual oficial de Honda ↗</a>}
                             </div>
                         )}
                     </article>
@@ -788,39 +912,83 @@ function MantenimientoBiblioteca({ car, gear }) {
 }
 
 function Content({ car, gear, tab }) {
+    const [pdfError, setPdfError] = useState('')
+
+    async function checkPdfAccess(url) {
+        setPdfError('')
+
+        try {
+            const response = await fetch(url, { method: 'HEAD' })
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`)
+            }
+        } catch (error) {
+            console.error('No se pudo verificar el acceso al PDF:', error)
+            setPdfError('No se pudo verificar el acceso al PDF en Cloudflare R2. Comprueba que el archivo exista y que CORS permita solicitudes desde este sitio.')
+        }
+    }
+
+    async function downloadPdf(url, title) {
+        setPdfError('')
+
+        try {
+            const response = await fetch(url)
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`)
+            }
+
+            const objectUrl = URL.createObjectURL(await response.blob())
+            const link = document.createElement('a')
+            link.href = objectUrl
+            link.download = `${title || 'manual'}.pdf`
+            link.click()
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+        } catch (error) {
+            console.error('No se pudo descargar el PDF:', error)
+            setPdfError('No se pudo descargar el PDF desde Cloudflare R2. Comprueba que el archivo exista y que CORS permita solicitudes desde este sitio.')
+        }
+    }
+
     if (tab === 'mantenimiento') {
         return <MantenimientoBiblioteca car={car} gear={gear} />
     }
 
     if (tab === 'documentos') {
         const documentosGuardados = Array.isArray(car.documentos) ? car.documentos : []
-        const referencias = isCivic2003(car) ? MANUALES_OFICIALES.civic2003 : []
-        const documentos = [...documentosGuardados, ...referencias.filter(ref =>
-            !documentosGuardados.some(doc => doc.archivo_url === ref.archivo_url)
-        )]
 
         return (
             <section className="panel biblioteca-section">
                 <Label>DOCUMENTOS</Label>
                 <h2>Manuales y diagramas</h2>
                 <p className="biblioteca-muted">Documentación relacionada con {car.make} {car.model} {car.year}. Verifica la versión antes de realizar reparaciones.</p>
-                {documentos.length > 0 ? (
+                {documentosGuardados.length > 0 ? (
                     <div className="biblioteca-grid">
-                        {documentos.map((doc, index) => (
-                            <article className="biblioteca-card" key={doc.id ?? `${doc.archivo_url}-${index}`}>
-                                <small>{displayData(doc.categoria)}</small>
-                                <h3>{displayData(doc.titulo)}</h3>
-                                <p>{displayData(doc.descripcion)}</p>
-                                {doc.fuente && <p>Fuente: {doc.fuente}</p>}
-                                {doc.archivo_url ? (
-                                    <a href={doc.archivo_url} target="_blank" rel="noopener noreferrer">Consultar documento ↗</a>
-                                ) : <span className="biblioteca-muted">Archivo aún no disponible</span>}
-                            </article>
-                        ))}
+                        {documentosGuardados.map((doc, index) => {
+                            const url = getDocumentUrl(doc.archivo_url)
+                            const title = doc.titulo || ''
+
+                            return (
+                                <article className="biblioteca-card" key={doc.id ?? `${doc.archivo_url}-${index}`}>
+                                    <small>{doc.categoria ? `${displayData(doc.categoria)} · PDF` : 'PDF'}</small>
+                                    <h3>{displayData(doc.titulo)}</h3>
+                                    <p>{displayData(doc.descripcion)}</p>
+                                    {doc.fuente && <p>Fuente: {doc.fuente}</p>}
+                                    {url ? (
+                                        <div className="biblioteca-actions">
+                                            <a href={url} target="_blank" rel="noopener noreferrer" onClick={() => checkPdfAccess(url)}>Ver PDF</a>
+                                            <button type="button" onClick={() => downloadPdf(url, title)}>Descargar</button>
+                                        </div>
+                                    ) : (
+                                        <p className="biblioteca-error" role="alert">{documentUrlError(doc.archivo_url)}</p>
+                                    )}
+                                </article>
+                            )
+                        })}
                     </div>
                 ) : (
-                    <Pending title="Aún no hay documentos disponibles" text="Todavía no se han registrado manuales para este vehículo." />
+                    <p className="biblioteca-muted">No hay documentos disponibles</p>
                 )}
+                {pdfError && <p className="biblioteca-error" role="alert">{pdfError}</p>}
             </section>
         )
     }
@@ -946,19 +1114,6 @@ function displayData(value) {
     return value == null || (typeof value === 'string' && !value.trim())
         ? 'Pendiente de registrar'
         : value
-}
-
-function Pending({ title, text }) {
-    return (
-        <div className="pending">
-            <Icon n="file" />
-            <div>
-                <strong>{title}</strong>
-                <p>{text}</p>
-            </div>
-            <small>PENDIENTE</small>
-        </div>
-    )
 }
 
 export default App
