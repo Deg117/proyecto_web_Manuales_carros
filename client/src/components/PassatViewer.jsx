@@ -161,7 +161,7 @@ export default function PassatViewer({
   }, [modelPath])
 
   return (
-    <div style={{ width: '100%', height: '360px', minHeight: '280px', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', cursor: 'grab' }} />
       {loading && (
         <p role="status" aria-live="polite" style={{ position: 'absolute', inset: '0', display: 'grid', placeItems: 'center', margin: 0, color: '#A1AAB8', background: 'rgba(22, 26, 32, 0.65)' }}>

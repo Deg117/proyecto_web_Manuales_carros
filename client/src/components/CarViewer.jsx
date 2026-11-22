@@ -1,6 +1,6 @@
-import { Suspense, useState } from 'react'
+import { Component, Suspense, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Bounds, Center, OrbitControls, useGLTF } from '@react-three/drei'
+import { Bounds, Center, OrbitControls, useGLTF, useProgress } from '@react-three/drei'
 import * as THREE from 'three'
 import './CarViewer.css'
 
@@ -52,6 +52,39 @@ function CarModel({ modelPath, onSelect }) {
   return <SceneNode object={scene} onSelect={onSelect} />
 }
 
+function ModelLoadingOverlay() {
+  const { active, progress } = useProgress()
+  if (!active) return null
+
+  return (
+    <div className="vehicle-model-loading-overlay" role="status" aria-live="polite">
+      <span className="vehicle-model-loading">
+        Cargando modelo 3D… {Math.round(progress)}%
+      </span>
+    </div>
+  )
+}
+
+class ModelErrorBoundary extends Component {
+  state = { hasError: false }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error) {
+    this.props.onError(error)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback
+    }
+
+    return this.props.children
+  }
+}
+
 function SelectionMarker({ point }) {
   if (!point) return null
 
@@ -76,6 +109,7 @@ function SelectionMarker({ point }) {
 
 export default function CarViewer({ modelPath = CIVIC_MODEL }) {
   const [selected, setSelected] = useState(null)
+  const [modelErrorPath, setModelErrorPath] = useState('')
 
   return (
     <div className="car-viewer">
@@ -85,35 +119,46 @@ export default function CarViewer({ modelPath = CIVIC_MODEL }) {
           dpr={[1, 2]}
           gl={{ antialias: true, alpha: false }}
         >
-          <color attach="background" args={['#000000']} />
+          <color attach="background" args={['#161A20']} />
           <ambientLight intensity={1.5} />
           <directionalLight position={[4, 6, 5]} intensity={2} castShadow />
           <directionalLight position={[-4, 2, -3]} intensity={0.8} />
 
-          <Suspense fallback={null}>
-            <Bounds fit clip observe margin={1.25}>
-              <Center>
-                <CarModel modelPath={modelPath} onSelect={setSelected} />
-              </Center>
-            </Bounds>
-          </Suspense>
+          <ModelErrorBoundary
+            key={modelPath}
+            fallback={null}
+            onError={error => {
+              console.error(`Error cargando modelo 3D (${modelPath}):`, error)
+              setModelErrorPath(modelPath)
+            }}
+          >
+            <Suspense fallback={null}>
+              <Bounds fit clip observe margin={1.25}>
+                <Center>
+                  <CarModel modelPath={modelPath} onSelect={setSelected} />
+                </Center>
+              </Bounds>
+            </Suspense>
 
-          <SelectionMarker point={selected?.point} />
-          <OrbitControls
-            makeDefault
-            enableDamping
-            enableRotate
-            enableZoom
-            enablePan={false}
-            minDistance={1}
-            maxDistance={12}
-          />
+            <SelectionMarker point={selected?.point} />
+            <OrbitControls
+              makeDefault
+              enableDamping
+              enableRotate
+              enableZoom
+              enablePan={false}
+              minDistance={1}
+              maxDistance={12}
+            />
+          </ModelErrorBoundary>
         </Canvas>
-
-        <div className="car-controls-hint">
-          Arrastra para girar · Rueda para acercar
-        </div>
       </div>
+      <ModelLoadingOverlay />
+      {modelErrorPath === modelPath && (
+        <p className="vehicle-model-error" role="alert">
+          No se pudo cargar el modelo 3D de este vehículo.
+        </p>
+      )}
 
     </div>
   )

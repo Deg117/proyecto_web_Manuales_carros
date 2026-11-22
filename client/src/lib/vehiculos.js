@@ -4,7 +4,8 @@ import { supabase } from './supabaseClient'
 function adaptarVehiculo(v) {
   const marca = v.marca || ''
   const modelo = v.modelo || ''
-  const anio = Number(v.anio)
+  const parsedYear = v.anio == null || v.anio === '' ? null : Number(v.anio)
+  const anio = Number.isInteger(parsedYear) && parsedYear > 0 ? parsedYear : null
 
   const esCivic2003 =
     marca.toLowerCase() === 'honda' &&
@@ -41,7 +42,7 @@ function adaptarVehiculo(v) {
         ? ['Automática', 'Manual']
         : esPassat2010
           ? ['Automática']
-          : ['No especificada'],
+          : [],
   }
 }
 

@@ -3,6 +3,7 @@ import './AutoLibrary.css'
 import MotorViewer from './components/MotorViewer'
 import CarViewer, { HYUNDAI_I10_MODEL } from './components/CarViewer'
 import PassatViewer from './components/PassatViewer'
+import VehicleDetailLayout from './components/VehicleDetailLayout'
 import { useAuth } from './auth/AuthContext'
 import AuthForm from './auth/AuthForm'
 import {
@@ -22,6 +23,57 @@ function isCamaro1972(vehicle) {
     return vehicle?.make?.toLowerCase() === 'chevrolet' &&
         vehicle.model?.toLowerCase().includes('camaro') &&
         Number(vehicle.year) === 1972
+}
+
+function isCivic2003(vehicle) {
+    return vehicle?.make?.toLowerCase() === 'honda' &&
+        vehicle.model?.toLowerCase().includes('civic') &&
+        Number(vehicle.year) === 2003
+}
+
+function isPassat2010(vehicle) {
+    return vehicle?.make?.toLowerCase() === 'volkswagen' &&
+        vehicle.model?.toLowerCase().includes('passat') &&
+        Number(vehicle.year) === 2010
+}
+
+function isHyundaiI10(vehicle) {
+    return vehicle?.make?.toLowerCase() === 'hyundai' &&
+        vehicle.model?.toLowerCase().includes('i10')
+}
+
+function getVehicleImage(vehicle) {
+    if (isCamaro1972(vehicle)) return '/images/Camaro.png'
+    if (vehicle.make?.toLowerCase() === 'honda' && vehicle.model?.toLowerCase().includes('civic')) {
+        return '/images/Civic.png'
+    }
+    if (vehicle.make?.toLowerCase() === 'volkswagen' && vehicle.model?.toLowerCase().includes('passat')) {
+        return '/images/Passat.png'
+    }
+    if (isHyundaiI10(vehicle)) return '/images/i10.png'
+    return vehicle.imageUrl || null
+}
+
+function VehicleDisplay({ vehicle }) {
+    if (isCivic2003(vehicle)) return <CarViewer />
+    if (isHyundaiI10(vehicle)) return <CarViewer modelPath={HYUNDAI_I10_MODEL} />
+    if (isCamaro1972(vehicle)) {
+        return <PassatViewer modelPath="/models/camaro_1972/car/base_basic_shaded.glb" />
+    }
+    if (isPassat2010(vehicle)) {
+        return <PassatViewer modelPath="/models/passat_2010/car/base_basic_shaded.glb" />
+    }
+
+    const image = getVehicleImage(vehicle)
+    return image ? (
+        <img
+            className="vehicle-reference-image"
+            src={image}
+            alt={`${vehicle.make} ${vehicle.model}${vehicle.year ? ` ${vehicle.year}` : ''}`}
+        />
+    ) : (
+        <p className="vehicle-visual-pending">Vista del vehículo pendiente de registrar</p>
+    )
 }
 
 const P = {
@@ -65,40 +117,8 @@ function Logo() {
     )
 }
 
-function Car() {
-    return (
-        <svg className="car" viewBox="0 0 660 300" role="img" aria-label="Ilustración de un sedán">
-            <defs>
-                <linearGradient id="paint" x2="1" y2="1">
-                    <stop stopColor="#eaf0e7" />
-                    <stop offset="1" stopColor="#78917f" />
-                </linearGradient>
-            </defs>
-            <ellipse cx="330" cy="247" rx="250" ry="20" fill="#20352b" opacity=".12" />
-            <path d="m75 203 14-38q8-9 45-16l100-27 68-65q15-13 35-13h85q27 0 44 22l56 62 45 20q23 10 28 36l3 20q1 15-18 15H94q-22 0-19-16z" fill="url(#paint)" stroke="#516b5d" strokeWidth="3" />
-            <path d="m247 119 63-59q13-12 30-12h44v71zm149-71h28q23 0 37 16l49 55h-114z" fill="#354c45" stroke="#61776a" strokeWidth="3" />
-            <path d="M390 48v71M246 121h270M305 121l-6 52m94-52 4 52" fill="none" stroke="#718579" strokeWidth="3" />
-            <circle cx="185" cy="207" r="38" fill="#202b28" />
-            <circle cx="185" cy="207" r="22" fill="#d7ddd5" />
-            <circle cx="500" cy="207" r="38" fill="#202b28" />
-            <circle cx="500" cy="207" r="22" fill="#d7ddd5" />
-        </svg>
-    )
-}
-
 function VehicleCard({ v, onOpen, onToggle, isFavorite, busy }) {
-    const make = v.make?.toLowerCase()
-    const model = v.model?.toLowerCase() || ''
-    const carImage =
-        isCamaro1972(v)
-            ? '/images/Camaro.png'
-            : make === 'honda' && model.includes('civic')
-            ? '/images/Civic.png'
-            : make === 'volkswagen' && model.includes('passat')
-                ? '/images/Passat.png'
-                : make === 'hyundai' && model.includes('i10')
-                    ? '/images/i10.png'
-                    : v.imageUrl || null
+    const carImage = getVehicleImage(v)
 
     return (
         <div className="favorite-card-shell">
@@ -154,7 +174,7 @@ function App() {
     const [authError, setAuthError] = useState('')
     const [list, S] = useState([])
     const [car, C] = useState(null)
-    const [gear, G] = useState('Automática')
+    const [gear, G] = useState('')
     const [tab, T] = useState('catalogo')
     const [q, Q] = useState('')
     const [make, M] = useState('')
@@ -298,7 +318,7 @@ function App() {
         G(
             v.transmissions.includes('Automática')
                 ? 'Automática'
-                : v.transmissions[0] || 'No especificada'
+                : v.transmissions[0] || ''
         )
 
         T('catalogo')
@@ -312,7 +332,7 @@ function App() {
             G(
                 vehiculo.transmissions.includes('Automática')
                     ? 'Automática'
-                    : vehiculo.transmissions[0] || 'No especificada'
+                    : vehiculo.transmissions[0] || ''
             )
         } catch (error) {
             console.error('Error al cargar vehículo:', error)
@@ -326,25 +346,6 @@ function App() {
         C(null)
         window.scrollTo(0, 0)
     }
-
-    const isCivic2003 =
-        car &&
-        car.make?.toLowerCase() === 'honda' &&
-        car.model?.toLowerCase().includes('civic') &&
-        Number(car.year) === 2003
-
-    const isPassat2010 =
-        car &&
-        car.make?.toLowerCase() === 'volkswagen' &&
-        car.model?.toLowerCase().includes('passat') &&
-        Number(car.year) === 2010
-
-    const isHyundaiI10 =
-        car &&
-        car.make?.toLowerCase() === 'hyundai' &&
-        car.model?.toLowerCase().includes('i10')
-
-    const isCamaro = isCamaro1972(car)
 
     return (
         <div className="autolibrary">
@@ -434,81 +435,32 @@ function App() {
 
             {car ? (
                 <main className="wrap detail-page">
-                    <button
-                        className="back"
-                        onClick={() => {
+                    <VehicleDetailLayout
+                        vehicle={car}
+                        viewer={<VehicleDisplay vehicle={car} />}
+                        isInteractive={
+                            isCivic2003(car) ||
+                            isHyundaiI10(car) ||
+                            isPassat2010(car) ||
+                            isCamaro1972(car)
+                        }
+                        motorViewer={isCivic2003(car) && <MotorViewer />}
+                        isFavorite={favoriteIds.includes(String(car.id))}
+                        favoriteBusy={favoritesLoading || favoriteBusyId === String(car.id)}
+                        favoritesError={favoritesError}
+                        onFavoriteToggle={() => toggleFavorite(car.id)}
+                        onBack={() => {
                             C(null)
                             T('catalogo')
                         }}
+                        transmissions={car.transmissions || []}
+                        selectedTransmission={gear}
+                        onTransmissionChange={G}
+                        activeTab={tab}
+                        onTabChange={T}
                     >
-                        <Icon n="back" /> Volver al catálogo
-                    </button>
-
-                    <section className="detail">
-                        <div>
-                            <Label>FICHA DEL VEHÍCULO</Label>
-                            <h1>
-                                {car.make} <em>{car.model}</em>
-                                {(car.year || car.trim) && (
-                                    <>
-                                        <br />
-                                        {car.year} <small>{car.trim}</small>
-                                    </>
-                                )}
-                            </h1>
-                            <p>Información técnica y de servicio, reunida en un solo lugar.</p>
-                            <p className="tags">
-                                <Icon n="car" /> {car.bodyStyle || 'Automóvil'}
-                                <Icon n="wrench" /> {car.engineCode || 'Motor no registrado'}
-                            </p>
-                        </div>
-                        <div className="art">
-                            {isCivic2003 ? (
-                                <CarViewer />
-                            ) : isHyundaiI10 ? (
-                                <CarViewer modelPath={HYUNDAI_I10_MODEL} />
-                            ) : isCamaro ? (
-                                <PassatViewer modelPath="/models/camaro_1972/car/base_basic_shaded.glb" />
-                            ) : isPassat2010 ? (
-                                <PassatViewer modelPath="/models/passat_2010/car/base_basic_shaded.glb" />
-                            ) : (
-                                <Car />
-                            )}
-                        </div>
-                    </section>
-
-                    {isCivic2003 && <MotorViewer />}
-
-                    <div className="choice">
-                        <div>
-                            <Label>CONFIGURACIÓN</Label>
-                            <h2>Elige tu transmisión</h2>
-                        </div>
-                        <div>
-                            {car.transmissions.map(x => (
-                                <button
-                                    className={gear === x ? 'chosen' : ''}
-                                    key={x}
-                                    onClick={() => G(x)}
-                                >
-                                    {x}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="tabs">
-                        <button
-                            className={tab === 'specs' || tab === 'catalogo' ? 'chosen' : ''}
-                            onClick={() => T('specs')}
-                        >
-                            Especificaciones
-                        </button>
-                        <button onClick={() => T('mantenimiento')}>Mantenimiento</button>
-                        <button onClick={() => T('documentos')}>Documentos</button>
-                    </div>
-
-                    <Content car={car} gear={gear} tab={tab} />
+                        <Content car={car} gear={gear} tab={tab} />
+                    </VehicleDetailLayout>
                 </main>
             ) : tab === 'catalogo' ? (
                 <>
@@ -723,9 +675,9 @@ function Content({ car, gear, tab }) {
                     <div className="documents-list">
                         {documentos.map(doc => (
                             <div className="document-item" key={doc.id}>
-                                <h3>{doc.titulo}</h3>
-                                <p>{doc.categoria}</p>
-                                <p>{doc.descripcion}</p>
+                                <h3>{displayData(doc.titulo)}</h3>
+                                <p>{displayData(doc.categoria)}</p>
+                                <p>{displayData(doc.descripcion)}</p>
 
                                 {doc.archivo_url && (
                                     <a
@@ -749,6 +701,17 @@ function Content({ car, gear, tab }) {
         )
     }
 
+    const selectedTransmission = car.transmisiones?.find(t => t.tipo === gear)
+    const transmissionDetails = selectedTransmission
+        ? [
+            selectedTransmission.velocidades != null
+                ? `${selectedTransmission.velocidades} velocidades`
+                : null,
+            selectedTransmission.traccion
+                ? `Tracción ${selectedTransmission.traccion}`
+                : null,
+        ].filter(Boolean).join(' · ')
+        : null
 
     return (
         <section className="specs">
@@ -767,18 +730,28 @@ function Content({ car, gear, tab }) {
                         />
                         <Spec
                             label="CILINDRADA"
-                            value={`${car.motor.cilindrada_cc} cc`}
+                            value={car.motor.cilindrada_cc != null
+                                ? `${car.motor.cilindrada_cc} cc`
+                                : null}
                             detail="Desplazamiento"
                         />
                         <Spec
                             label="POTENCIA"
-                            value={car.motor.potencia_hp != null ? `${car.motor.potencia_hp} hp` : 'Pendiente'}
-                            detail={car.motor.potencia_rpm != null ? `${car.motor.potencia_rpm} rpm` : 'Potencia por confirmar'}
+                            value={car.motor.potencia_hp != null
+                                ? `${car.motor.potencia_hp} hp`
+                                : null}
+                            detail={car.motor.potencia_rpm != null
+                                ? `${car.motor.potencia_rpm} rpm`
+                                : null}
                         />
                         <Spec
                             label="TORQUE"
-                            value={car.motor.torque_lbft != null ? `${car.motor.torque_lbft} lb-pie` : 'Pendiente'}
-                            detail={car.motor.torque_rpm != null ? `${car.motor.torque_rpm} rpm` : 'Torque por confirmar'}
+                            value={car.motor.torque_lbft != null
+                                ? `${car.motor.torque_lbft} lb-pie`
+                                : null}
+                            detail={car.motor.torque_rpm != null
+                                ? `${car.motor.torque_rpm} rpm`
+                                : null}
                         />
                         <Spec
                             label="CILINDROS"
@@ -788,7 +761,9 @@ function Content({ car, gear, tab }) {
                         <Spec
                             label="DISTRIBUCIÓN"
                             value={car.motor.distribucion}
-                            detail={`${car.motor.valvulas} válvulas`}
+                            detail={car.motor.valvulas != null
+                                ? `${car.motor.valvulas} válvulas`
+                                : null}
                         />
                     </div>
                 </div>
@@ -798,43 +773,35 @@ function Content({ car, gear, tab }) {
             <div className="spec-grid">
                 <Spec
                     label="MOTOR"
-                    value={car.motor?.codigo || car.engineCode || 'No registrado'}
+                    value={car.motor?.codigo || car.engineCode || null}
                     detail={
-                        car.motor?.cilindrada_cc
+                        car.motor?.cilindrada_cc != null
                             ? `${car.motor.cilindrada_cc} cc`
-                            : 'Cilindrada no registrada'
+                            : null
                     }
                 />
 
                 <Spec
                     label="TRANSMISIÓN"
-                    value={gear || 'No registrada'}
-                    detail={
-                        car.transmisiones?.find(t => t.tipo === gear)
-                            ? `${car.transmisiones.find(t => t.tipo === gear)
-                                .velocidades
-                            } velocidades · Tracción ${car.transmisiones.find(t => t.tipo === gear)
-                                .traccion || 'No registrada'
-                            }`
-                            : 'Información pendiente'
-                    }
+                    value={gear || null}
+                    detail={transmissionDetails}
                 />
 
                 <Spec
                     label="CARROCERÍA"
-                    value={car.bodyStyle || 'No registrada'}
-                    detail={`${car.make} ${car.model} · ${car.year}`}
+                    value={car.bodyStyle || null}
+                    detail={[car.make, car.model, car.year].filter(Boolean).join(' · ')}
                 />
 
                 <Spec
                     label="COMBUSTIBLE"
-                    value={car.motor?.combustible || car.fuel || 'No registrado'}
+                    value={car.motor?.combustible || car.fuel || null}
                     detail="Tipo de combustible"
                 />
             </div>
             {car.specifications?.map(x => (
                 <p className="spec-row" key={x.label}>
-                    {x.label}<b>{x.value}</b>
+                    {displayData(x.label)}<b>{displayData(x.value)}</b>
                 </p>
             ))}
         </section>
@@ -844,11 +811,17 @@ function Content({ car, gear, tab }) {
 function Spec({ label, value, detail }) {
     return (
         <article>
-            <small>{label}</small>
-            <strong>{value}</strong>
-            <p>{detail}</p>
+            <small>{displayData(label)}</small>
+            <strong>{displayData(value)}</strong>
+            <p>{displayData(detail)}</p>
         </article>
     )
+}
+
+function displayData(value) {
+    return value == null || (typeof value === 'string' && !value.trim())
+        ? 'Pendiente de registrar'
+        : value
 }
 
 function Pending({ title, text }) {

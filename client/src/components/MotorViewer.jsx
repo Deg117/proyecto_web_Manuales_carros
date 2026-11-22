@@ -81,7 +81,7 @@ export default function MotorViewer() {
     <section className="motor-viewer">
       <div className="motor-viewer-heading">
         <div>
-          <span>VISOR INTERACTIVO</span>
+          <span>MOTOR INTERACTIVO</span>
           <h2>Motor Honda D17A2</h2>
           <p>Explora el motor. Gira el modelo y selecciona una zona.</p>
         </div>
