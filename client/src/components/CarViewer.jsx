@@ -1,8 +1,10 @@
-import { Component, Suspense, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Bounds, Center, OrbitControls, useGLTF, useProgress } from '@react-three/drei'
+import { Bounds, Center, OrbitControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import './CarViewer.css'
+import ModelErrorBoundary from './ModelErrorBoundary'
+import ModelLoadingOverlay from './ModelLoadingOverlay'
 
 const CIVIC_MODEL = '/models/civic-2003/car/civic_pbr.glb'
 export const HYUNDAI_I10_MODEL = '/models/hyundai_i10/car/base_basic_pbr.glb'
@@ -47,42 +49,10 @@ function SceneNode({ object, onSelect }) {
   )
 }
 
-function CarModel({ modelPath, onSelect }) {
+function CarModel({ modelPath, onSelect, onReady }) {
   const { scene } = useGLTF(modelPath)
+  useEffect(() => onReady(), [onReady, scene])
   return <SceneNode object={scene} onSelect={onSelect} />
-}
-
-function ModelLoadingOverlay() {
-  const { active, progress } = useProgress()
-  if (!active) return null
-
-  return (
-    <div className="vehicle-model-loading-overlay" role="status" aria-live="polite">
-      <span className="vehicle-model-loading">
-        Cargando modelo 3D… {Math.round(progress)}%
-      </span>
-    </div>
-  )
-}
-
-class ModelErrorBoundary extends Component {
-  state = { hasError: false }
-
-  static getDerivedStateFromError() {
-    return { hasError: true }
-  }
-
-  componentDidCatch(error) {
-    this.props.onError(error)
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback
-    }
-
-    return this.props.children
-  }
 }
 
 function SelectionMarker({ point }) {
@@ -107,9 +77,39 @@ function SelectionMarker({ point }) {
   )
 }
 
-export default function CarViewer({ modelPath = CIVIC_MODEL }) {
+export default function CarViewer({
+  modelPath = CIVIC_MODEL,
+  vehicleName = 'Honda Civic 2003',
+}) {
   const [selected, setSelected] = useState(null)
-  const [modelErrorPath, setModelErrorPath] = useState('')
+  const [retryCount, setRetryCount] = useState(0)
+  const [loadState, setLoadState] = useState({
+    modelPath,
+    loading: true,
+    error: '',
+  })
+  const visibleState = loadState.modelPath === modelPath
+    ? loadState
+    : { loading: true, error: '' }
+
+  const onModelReady = useCallback(() => {
+    setLoadState({ modelPath, loading: false, error: '' })
+  }, [modelPath])
+
+  const onModelError = useCallback(error => {
+    console.error(`Error cargando modelo 3D (${modelPath}):`, error)
+    setLoadState({
+      modelPath,
+      loading: false,
+      error: 'Comprueba la conexión e inténtalo de nuevo.',
+    })
+  }, [modelPath])
+
+  const retryModel = useCallback(() => {
+    setLoadState({ modelPath, loading: true, error: '' })
+    useGLTF.clear(modelPath)
+    setRetryCount(count => count + 1)
+  }, [modelPath])
 
   return (
     <div className="car-viewer">
@@ -125,17 +125,17 @@ export default function CarViewer({ modelPath = CIVIC_MODEL }) {
           <directionalLight position={[-4, 2, -3]} intensity={0.8} />
 
           <ModelErrorBoundary
-            key={modelPath}
-            fallback={null}
-            onError={error => {
-              console.error(`Error cargando modelo 3D (${modelPath}):`, error)
-              setModelErrorPath(modelPath)
-            }}
+            key={`${modelPath}:${retryCount}`}
+            onError={onModelError}
           >
             <Suspense fallback={null}>
               <Bounds fit clip observe margin={1.25}>
                 <Center>
-                  <CarModel modelPath={modelPath} onSelect={setSelected} />
+                  <CarModel
+                    modelPath={modelPath}
+                    onSelect={setSelected}
+                    onReady={onModelReady}
+                  />
                 </Center>
               </Bounds>
             </Suspense>
@@ -153,15 +153,14 @@ export default function CarViewer({ modelPath = CIVIC_MODEL }) {
           </ModelErrorBoundary>
         </Canvas>
       </div>
-      <ModelLoadingOverlay />
-      {modelErrorPath === modelPath && (
-        <p className="vehicle-model-error" role="alert">
-          No se pudo cargar el modelo 3D de este vehículo.
-        </p>
-      )}
-
+      <ModelLoadingOverlay
+        loading={visibleState.loading}
+        progress={null}
+        vehicleName={vehicleName}
+        error={visibleState.error}
+        onRetry={retryModel}
+        attemptKey={`${modelPath}:${retryCount}`}
+      />
     </div>
   )
 }
-
-useGLTF.preload(CIVIC_MODEL)

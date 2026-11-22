@@ -55,13 +55,39 @@ function getVehicleImage(vehicle) {
 }
 
 function VehicleDisplay({ vehicle }) {
-    if (isCivic2003(vehicle)) return <CarViewer />
-    if (isHyundaiI10(vehicle)) return <CarViewer modelPath={HYUNDAI_I10_MODEL} />
+    const vehicleName = [vehicle.make, vehicle.model, vehicle.year]
+        .filter(value => value != null && value !== '')
+        .join(' ')
+
+    if (isCivic2003(vehicle)) {
+        return <CarViewer key="civic-2003" vehicleName={vehicleName} />
+    }
+    if (isHyundaiI10(vehicle)) {
+        return (
+            <CarViewer
+                key={HYUNDAI_I10_MODEL}
+                modelPath={HYUNDAI_I10_MODEL}
+                vehicleName={vehicleName}
+            />
+        )
+    }
     if (isCamaro1972(vehicle)) {
-        return <PassatViewer modelPath="/models/camaro_1972/car/base_basic_shaded.glb" />
+        return (
+            <PassatViewer
+                key="camaro-1972"
+                modelPath="https://pub-588d4cf78a8b4cd38f882ff7e4ebb548.r2.dev/camaro_1972/base_basic_pbr.glb"
+                vehicleName={vehicleName}
+            />
+        )
     }
     if (isPassat2010(vehicle)) {
-        return <PassatViewer modelPath="/models/passat_2010/car/base_basic_shaded.glb" />
+        return (
+            <PassatViewer
+                key="passat-2010"
+                modelPath="/models/passat_2010/car/base_basic_shaded.glb"
+                vehicleName={vehicleName}
+            />
+        )
     }
 
     const image = getVehicleImage(vehicle)
@@ -444,7 +470,11 @@ function App() {
                             isPassat2010(car) ||
                             isCamaro1972(car)
                         }
-                        motorViewer={isCivic2003(car) && <MotorViewer />}
+                        motorViewer={isCivic2003(car) && (
+                            <MotorViewer
+                                vehicleName={`Motor ${car.make} ${car.engineCode || 'D17A2'}`}
+                            />
+                        )}
                         isFavorite={favoriteIds.includes(String(car.id))}
                         favoriteBusy={favoritesLoading || favoriteBusyId === String(car.id)}
                         favoritesError={favoritesError}

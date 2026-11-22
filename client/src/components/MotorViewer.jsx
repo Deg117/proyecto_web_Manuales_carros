@@ -1,9 +1,11 @@
 
-import { Suspense, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Bounds, Center, OrbitControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import './MotorViewer.css'
+import ModelErrorBoundary from './ModelErrorBoundary'
+import ModelLoadingOverlay from './ModelLoadingOverlay'
 
 const MODEL = '/models/civic-2003/engine/complete/motor_pbr.glb'
 
@@ -47,8 +49,9 @@ function SceneNode({ object, onSelect }) {
   )
 }
 
-function EngineModel({ onSelect }) {
+function EngineModel({ onSelect, onReady }) {
   const { scene } = useGLTF(MODEL)
+  useEffect(() => onReady(), [onReady, scene])
   return <SceneNode object={scene} onSelect={onSelect} />
 }
 
@@ -74,8 +77,31 @@ function SelectionMarker({ point }) {
   )
 }
 
-export default function MotorViewer() {
+export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
   const [selected, setSelected] = useState(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const [loadState, setLoadState] = useState({
+    loading: true,
+    error: '',
+  })
+
+  const onModelReady = useCallback(() => {
+    setLoadState({ loading: false, error: '' })
+  }, [])
+
+  const onModelError = useCallback(error => {
+    console.error(`Error cargando modelo 3D del motor (${MODEL}):`, error)
+    setLoadState({
+      loading: false,
+      error: 'Comprueba la conexión e inténtalo de nuevo.',
+    })
+  }, [])
+
+  const retryModel = useCallback(() => {
+    setLoadState({ loading: true, error: '' })
+    useGLTF.clear(MODEL)
+    setRetryCount(count => count + 1)
+  }, [])
 
   return (
     <section className="motor-viewer">
@@ -103,22 +129,33 @@ export default function MotorViewer() {
           />
           <directionalLight position={[-4, 2, -3]} intensity={0.8} />
 
-          <Suspense fallback={null}>
-            <Bounds fit clip observe margin={1.25}>
-              <Center>
-                <EngineModel onSelect={setSelected} />
-              </Center>
-            </Bounds>
-          </Suspense>
+          <ModelErrorBoundary key={`${MODEL}:${retryCount}`} onError={onModelError}>
+            <Suspense fallback={null}>
+              <Bounds fit clip observe margin={1.25}>
+                <Center>
+                  <EngineModel onSelect={setSelected} onReady={onModelReady} />
+                </Center>
+              </Bounds>
+            </Suspense>
 
-          <SelectionMarker point={selected?.point} />
-          <OrbitControls
-            makeDefault
-            enableDamping
-            minDistance={1}
-            maxDistance={10}
-          />
+            <SelectionMarker point={selected?.point} />
+            <OrbitControls
+              makeDefault
+              enableDamping
+              minDistance={1}
+              maxDistance={10}
+            />
+          </ModelErrorBoundary>
         </Canvas>
+
+        <ModelLoadingOverlay
+          loading={loadState.loading}
+          progress={null}
+          vehicleName={vehicleName}
+          error={loadState.error}
+          onRetry={retryModel}
+          attemptKey={retryCount}
+        />
 
         <div className="motor-controls-hint">
           Arrastra para girar · Rueda para acercar
@@ -145,5 +182,3 @@ export default function MotorViewer() {
     </section>
   )
 }
-
-useGLTF.preload(MODEL)

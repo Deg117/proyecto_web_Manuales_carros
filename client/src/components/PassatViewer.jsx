@@ -1,24 +1,44 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import ModelLoadingOverlay from './ModelLoadingOverlay'
 
 export default function PassatViewer({
   modelPath = '/models/passat_2010/car/base_basic_shaded.glb',
+  vehicleName = 'Volkswagen Passat 2010',
 }) {
   const containerRef = useRef(null)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const pendingAbortRef = useRef(null)
+  const activeLoadingManagerRef = useRef(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const requestKey = `${modelPath}:${retryCount}`
+  const [loadState, setLoadState] = useState({
+    key: '',
+    loading: true,
+    progress: null,
+    error: '',
+  })
+  const visibleState = loadState.key === requestKey
+    ? loadState
+    : { loading: true, progress: null, error: '' }
+
+  const retryModel = useCallback(() => {
+    activeLoadingManagerRef.current?.abort()
+    setRetryCount(count => count + 1)
+  }, [])
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
+    if (pendingAbortRef.current?.key === requestKey) {
+      window.clearTimeout(pendingAbortRef.current.timeoutId)
+      pendingAbortRef.current = null
+    }
     let disposed = false
     let frameId = 0
     let model = null
 
-    setError('')
-    setLoading(true)
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 1000)
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
@@ -98,7 +118,9 @@ export default function PassatViewer({
     resizeObserver.observe(container)
     resize()
 
-    const loader = new GLTFLoader()
+    const loadingManager = new THREE.LoadingManager()
+    activeLoadingManagerRef.current = loadingManager
+    const loader = new GLTFLoader(loadingManager)
     loader.load(
       modelPath,
       gltf => {
@@ -113,19 +135,43 @@ export default function PassatViewer({
         model = gltf.scene
         scene.add(model)
         if (new THREE.Box3().setFromObject(model).isEmpty()) {
-          setError('El archivo 3D no contiene geometría visible.')
-          setLoading(false)
+          setLoadState({
+            key: requestKey,
+            loading: false,
+            progress: null,
+            error: 'El archivo no contiene geometría visible.',
+          })
           return
         }
         fitModel()
-        setLoading(false)
+        setLoadState({
+          key: requestKey,
+          loading: false,
+          progress: null,
+          error: '',
+        })
       },
-      undefined,
+      event => {
+        if (disposed) return
+        const progress = event.lengthComputable && event.total > 0
+          ? Math.min(100, Math.round((event.loaded / event.total) * 100))
+          : null
+        setLoadState({
+          key: requestKey,
+          loading: true,
+          progress,
+          error: '',
+        })
+      },
       err => {
         if (!disposed) {
           console.error(`Error cargando modelo 3D (${modelPath}):`, err)
-          setError(`No se pudo cargar el modelo: ${modelPath}`)
-          setLoading(false)
+          setLoadState({
+            key: requestKey,
+            loading: false,
+            progress: null,
+            error: 'Comprueba la conexión e inténtalo de nuevo.',
+          })
         }
       },
     )
@@ -142,6 +188,16 @@ export default function PassatViewer({
       disposed = true
       cancelAnimationFrame(frameId)
       resizeObserver.disconnect()
+      if (activeLoadingManagerRef.current === loadingManager) {
+        activeLoadingManagerRef.current = null
+      }
+      const timeoutId = window.setTimeout(() => {
+        loadingManager.abort()
+        if (pendingAbortRef.current?.timeoutId === timeoutId) {
+          pendingAbortRef.current = null
+        }
+      }, 0)
+      pendingAbortRef.current = { key: requestKey, timeoutId }
       controls.dispose()
       if (model) {
         model.traverse(obj => {
@@ -158,17 +214,19 @@ export default function PassatViewer({
       renderer.dispose()
       renderer.domElement.remove()
     }
-  }, [modelPath])
+  }, [modelPath, requestKey])
 
   return (
     <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', cursor: 'grab' }} />
-      {loading && (
-        <p role="status" aria-live="polite" style={{ position: 'absolute', inset: '0', display: 'grid', placeItems: 'center', margin: 0, color: '#A1AAB8', background: 'rgba(22, 26, 32, 0.65)' }}>
-          Cargando modelo 3D…
-        </p>
-      )}
-      {error && <p role="alert" style={{ position: 'absolute', inset: 'auto 12px 12px', color: '#fca5a5', background: '#161a20', padding: '10px', borderRadius: '8px' }}>{error}</p>}
+      <ModelLoadingOverlay
+        loading={visibleState.loading}
+        progress={visibleState.progress}
+        vehicleName={vehicleName}
+        error={visibleState.error}
+        onRetry={retryModel}
+        attemptKey={requestKey}
+      />
     </div>
   )
 }
