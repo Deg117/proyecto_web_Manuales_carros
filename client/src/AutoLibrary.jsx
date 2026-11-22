@@ -106,13 +106,16 @@ function Car() {
 }
 
 function VehicleCard({ v, onOpen, onToggle, isFavorite, busy }) {
+    const make = v.make?.toLowerCase()
+    const model = v.model?.toLowerCase() || ''
     const carImage =
-        v.make?.toLowerCase() === 'volkswagen' &&
-        v.model?.toLowerCase().includes('passat')
-            ? '/models/images/Passat.png'
-            : v.localOnly
-                ? null
-                : '/models/images/Civic.png'
+        make === 'honda' && model.includes('civic')
+            ? '/images/Civic.png'
+            : make === 'volkswagen' && model.includes('passat')
+                ? '/images/Passat.png'
+                : make === 'hyundai' && model.includes('i10')
+                    ? '/images/i10.png'
+                    : v.imageUrl || null
 
     return (
         <div className="favorite-card-shell">
@@ -536,8 +539,8 @@ function App() {
 
                             <div className="hero-car hero-dashboard">
                                 <img
-                                    src="/models/images/tablero.png"
-                                    alt="Tablero automotriz iluminado"
+                                    src="/images/TypeR.png"
+                                    alt="Honda Civic Type R"
                                     className="dashboard-image"
                                 />
                             </div>
