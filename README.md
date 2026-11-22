@@ -1,19 +1,22 @@
 # AutoLibrary
 
-Biblioteca digital automotriz en español. El proyecto actual contiene un frontend React/Vite, una API REST Express, datos de demostración en memoria, una estructura preparada para PostgreSQL y recursos 3D del Honda Civic 2003. La interfaz ya permite explorar y filtrar el catálogo, consultar la ficha del Civic EX y elegir su transmisión. Los archivos 3D están en el proyecto, pero todavía no hay un visor 3D integrado.
+Biblioteca digital automotriz en español. La aplicación principal es un frontend React/Vite conectado a Supabase Auth y a sus datos de vehículos. También incluye recursos 3D servidos localmente o desde Cloudflare R2, una API REST Express independiente para pruebas y una estructura PostgreSQL para ese servidor.
 
 ## Funciones actuales
 
 - Catálogo de vehículos con búsqueda y filtros por marca, modelo y año.
-- Ficha del Honda Civic 2003 EX con motor D17A2.
-- Selector de transmisión automática o manual.
+- Fichas de vehículos con selector de transmisión cuando hay opciones registradas.
+- Navegación interna entre catálogo, favoritos, mantenimiento y documentos. El logo accesible vuelve al catálogo sin recargar la página.
+- Visores 3D interactivos para vehículos y el motor D17A2 completo, con controles de giro y zoom.
+- Hotspots informativos del motor configurados en `client/src/data/puntosMotorD17A2.js`; se pueden mostrar u ocultar sin reiniciar el visor.
+- Registro con confirmación de contraseña y validación de mínimo 8 caracteres, una letra y un número.
 - Secciones de especificaciones, mantenimiento y documentos.
 - Sección de documentos conectada a los registros asociados al vehículo en Supabase.
-- API que consulta datos de prueba en memoria sin requerir PostgreSQL.
+- API Express independiente que puede ejecutarse con datos de demostración en memoria, sin requerir PostgreSQL.
 - Esquema y semilla SQL para cambiar el repositorio a PostgreSQL más adelante.
 - Diseño adaptable a escritorio y móvil, con interfaz en español.
 
-Los datos ampliados de especificaciones y los intervalos de mantenimiento siguen pendientes de validación. No se incluyen manuales ni diagramas ficticios.
+Los datos ampliados de algunas fichas y los intervalos de mantenimiento siguen pendientes de validación. No se incluyen manuales ni diagramas ficticios.
 
 ## Manuales PDF
 
@@ -21,13 +24,21 @@ La sección Documentos consulta `public.documentos` mediante la relación del ve
 
 `database/insertar_manuales.sql` contiene inserciones idempotentes para los IDs verificados del Honda Civic 2003 D17A2 y el Ford Fiesta 2014. El script no se ejecuta desde la aplicación: revísalo y ejecútalo manualmente en Supabase para que los PDF aparezcan. No elimina ni actualiza documentos existentes.
 
+## Autenticación
+
+Supabase Auth gestiona las contraseñas. El formulario de registro valida la confirmación y los requisitos de contraseña antes de enviar la solicitud; el inicio de sesión no aplica esa nueva regla desde el cliente para permitir contraseñas heredadas. No se guardan contraseñas en `localStorage` ni en `profiles`.
+
+La validación del frontend no es una política del servidor. Supabase permite configurar longitud y requisitos de contraseña en los ajustes de autenticación del proyecto. Antes de endurecer esa política, verifica su efecto sobre usuarios existentes: las contraseñas débiles pueden afectar su inicio de sesión. Consulta la [documentación de seguridad de contraseñas de Supabase](https://supabase.com/docs/guides/auth/password-security).
+
 ## Estructura del proyecto
 
 - **client/**: aplicación React con Vite.
-  - **client/src/AutoLibrary.jsx** y **AutoLibrary.css**: interfaz actual.
+  - **client/src/AutoLibrary.jsx** y **AutoLibrary.css**: navegación y vistas de catálogo, fichas y secciones.
+  - **client/src/components/MotorViewer.jsx**: visor interactivo del motor D17A2.
+  - **client/src/data/puntosMotorD17A2.js**: definición de hotspots del motor.
   - **client/src/main.jsx**: punto de entrada de React.
   - **client/public/models/**: modelos 3D disponibles como recursos estáticos.
-- **server/**: API Node.js con Express.
+- **server/**: API opcional Node.js con Express.
   - **server/src/index.js**: configuración y arranque del servidor.
   - **server/src/routes/vehicles.js**: endpoints de vehículos.
   - **server/src/repositories/vehicleRepository.js**: repositorio en memoria o PostgreSQL, según la configuración.
@@ -52,7 +63,7 @@ El guion requiere Python y los paquetes **trimesh**, **numpy** y **scipy**. Desd
 
     python -m pip install trimesh numpy scipy
 
-La separación generada es espacial y no representa necesariamente piezas mecánicas reales ni un despiece validado por Honda. Los modelos y las dependencias **three**, **@react-three/fiber** y **@react-three/drei** están presentes, pero la aplicación todavía no los carga en una experiencia 3D.
+La separación generada es espacial y no representa necesariamente piezas mecánicas reales ni un despiece validado por Honda. El visor del motor usa el GLB completo original; los puntos informativos se mantienen aparte en JavaScript y no modifican el modelo.
 
 ## Requisitos
 
@@ -62,23 +73,29 @@ La separación generada es espacial y no representa necesariamente piezas mecán
 
 ## Instalación y ejecución en VS Code
 
-Abre dos terminales en la carpeta raíz del proyecto.
+Configura el frontend en `client/.env.local` con los datos del proyecto Supabase y, si vas a servir manuales, la URL pública base del bucket de manuales:
 
-**Terminal 1 — API:**
+    VITE_SUPABASE_URL=<URL-del-proyecto>
+    VITE_SUPABASE_PUBLISHABLE_KEY=<clave-publishable>
+    VITE_R2_MANUALES_BASE_URL=<URL-publica-del-bucket-autolibrary-manuales>
+
+`VITE_R2_BASE_URL` es independiente y corresponde a los modelos 3D. Si falta `VITE_R2_MANUALES_BASE_URL`, los PDF que requieren esa base no podrán abrirse.
+
+**Terminal — frontend:**
+
+    cd client
+    npm install
+    npm run dev
+
+Vite muestra la dirección local del frontend; normalmente es http://localhost:5173. La interfaz consulta Supabase directamente; el servidor Express no es necesario para ejecutar el frontend.
+
+**API Express opcional — otra terminal:**
 
     cd server
     npm install
     npm run dev
 
 La API se inicia en http://localhost:4000. Puedes comprobar su estado en http://localhost:4000/api/health.
-
-**Terminal 2 — frontend:**
-
-    cd client
-    npm install
-    npm run dev
-
-Vite muestra la dirección local del frontend; normalmente es http://localhost:5173. Mantén ambas terminales abiertas mientras trabajas.
 
 Para compilar el frontend para producción:
 
@@ -100,11 +117,11 @@ Las respuestas de consulta están envueltas en JSON. La lista tiene la forma { "
 - GET /api/vehicles/honda-civic-2003-ex: ficha del vehículo.
 - Un identificador inexistente devuelve HTTP 404.
 
-El frontend usa VITE_API_URL si está definida; de lo contrario consulta http://localhost:4000. El backend usa PORT (predeterminado 4000) y CLIENT_ORIGIN (predeterminado http://localhost:5173) para el puerto y el origen CORS.
+La API Express es independiente del frontend. El backend usa `PORT` (predeterminado 4000) y `CLIENT_ORIGIN` (predeterminado http://localhost:5173) para el puerto y el origen CORS.
 
 ## Datos de prueba
 
-El registro inicial es el Honda Civic EX 2003, motor D17A2 de 1.7 L, con variantes automática y manual. Sus especificaciones ampliadas, mantenimiento y documentos están vacíos; la interfaz comunica que ese contenido está pendiente. La fuente en memoria es **server/src/data/vehicles.js**.
+La API Express usa **server/src/data/vehicles.js** como fuente de demostración en memoria. La aplicación React consulta los vehículos, favoritos y documentos asociados mediante Supabase; la disponibilidad de ese contenido depende de los registros y permisos del proyecto.
 
 ## PostgreSQL
 
@@ -120,8 +137,8 @@ El esquema separa marcas, modelos, vehículos, transmisiones, puntos de mantenim
 
 ## Dependencias principales
 
-- Frontend: React, React DOM, Vite y Oxlint.
-- Preparación para 3D: Three.js, React Three Fiber y Drei (todavía sin visor en la interfaz).
+- Frontend: React, React DOM, Vite, Oxlint y Supabase JS.
+- Visores 3D: Three.js, React Three Fiber y Drei.
 - Backend: Express, CORS y pg para PostgreSQL.
 
 Los archivos package-lock.json de client/ y server/ registran las dependencias instaladas de cada parte.
