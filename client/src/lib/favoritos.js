@@ -1,5 +1,29 @@
 import { supabase } from './supabaseClient'
 
+const MAX_BIGINT = '9223372036854775807'
+
+export function esIdVehiculoBigintValido(id) {
+    let value
+
+    if (typeof id === 'number') {
+        if (!Number.isSafeInteger(id) || id <= 0) return false
+        value = String(id)
+    } else if (typeof id === 'string' && /^[1-9]\d*$/.test(id)) {
+        value = id
+    } else {
+        return false
+    }
+
+    return value.length < MAX_BIGINT.length ||
+        (value.length === MAX_BIGINT.length && value <= MAX_BIGINT)
+}
+
+function validarVehiculoId(vehiculoId) {
+    if (!esIdVehiculoBigintValido(vehiculoId)) {
+        throw new Error('El vehículo no tiene un ID numérico válido de Supabase.')
+    }
+}
+
 export async function obtenerFavoritos(usuarioId) {
     const { data, error } = await supabase
         .from('favoritos')
@@ -13,6 +37,8 @@ export async function obtenerFavoritos(usuarioId) {
 }
 
 export async function agregarFavorito(usuarioId, vehiculoId) {
+    validarVehiculoId(vehiculoId)
+
     const { error } = await supabase
         .from('favoritos')
         .insert({
@@ -24,6 +50,8 @@ export async function agregarFavorito(usuarioId, vehiculoId) {
 }
 
 export async function quitarFavorito(usuarioId, vehiculoId) {
+    validarVehiculoId(vehiculoId)
+
     const { error } = await supabase
         .from('favoritos')
         .delete()

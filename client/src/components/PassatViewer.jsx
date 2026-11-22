@@ -8,6 +8,7 @@ export default function PassatViewer({
 }) {
   const containerRef = useRef(null)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const container = containerRef.current
@@ -17,6 +18,7 @@ export default function PassatViewer({
     let model = null
 
     setError('')
+    setLoading(true)
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 1000)
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
@@ -112,15 +114,18 @@ export default function PassatViewer({
         scene.add(model)
         if (new THREE.Box3().setFromObject(model).isEmpty()) {
           setError('El archivo 3D no contiene geometría visible.')
+          setLoading(false)
           return
         }
         fitModel()
+        setLoading(false)
       },
       undefined,
       err => {
         if (!disposed) {
-          console.error('Error cargando GLB del Passat:', err)
+          console.error(`Error cargando modelo 3D (${modelPath}):`, err)
           setError(`No se pudo cargar el modelo: ${modelPath}`)
+          setLoading(false)
         }
       },
     )
@@ -158,6 +163,11 @@ export default function PassatViewer({
   return (
     <div style={{ width: '100%', height: '360px', minHeight: '280px', position: 'relative' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', cursor: 'grab' }} />
+      {loading && (
+        <p role="status" aria-live="polite" style={{ position: 'absolute', inset: '0', display: 'grid', placeItems: 'center', margin: 0, color: '#A1AAB8', background: 'rgba(22, 26, 32, 0.65)' }}>
+          Cargando modelo 3D…
+        </p>
+      )}
       {error && <p role="alert" style={{ position: 'absolute', inset: 'auto 12px 12px', color: '#fca5a5', background: '#161a20', padding: '10px', borderRadius: '8px' }}>{error}</p>}
     </div>
   )

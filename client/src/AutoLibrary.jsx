@@ -13,34 +13,15 @@ import AdminPanel from './components/AdminPanel'
 import {
     obtenerFavoritos,
     agregarFavorito,
-    quitarFavorito
+    quitarFavorito,
+    esIdVehiculoBigintValido
 } from './lib/favoritos'
 import './favoritos.css'
 
-const LOCAL_HYUNDAI_I10 = {
-    id: 'local-hyundai-i10',
-    make: 'Hyundai',
-    model: 'i10',
-    year: null,
-    trim: '',
-    engineCode: '',
-    displacementL: null,
-    fuel: '',
-    description: '',
-    imageUrl: '',
-    bodyStyle: '',
-    transmissions: [],
-    specifications: [],
-    localOnly: true,
-}
-
-function includeHyundaiI10(vehicles) {
-    const alreadyRegistered = vehicles.some(vehicle =>
-        vehicle.make?.toLowerCase() === 'hyundai' &&
-        vehicle.model?.toLowerCase().includes('i10')
-    )
-
-    return alreadyRegistered ? vehicles : [...vehicles, LOCAL_HYUNDAI_I10]
+function isCamaro1972(vehicle) {
+    return vehicle?.make?.toLowerCase() === 'chevrolet' &&
+        vehicle.model?.toLowerCase().includes('camaro') &&
+        Number(vehicle.year) === 1972
 }
 
 const P = {
@@ -109,7 +90,9 @@ function VehicleCard({ v, onOpen, onToggle, isFavorite, busy }) {
     const make = v.make?.toLowerCase()
     const model = v.model?.toLowerCase() || ''
     const carImage =
-        make === 'honda' && model.includes('civic')
+        isCamaro1972(v)
+            ? '/images/Camaro.png'
+            : make === 'honda' && model.includes('civic')
             ? '/images/Civic.png'
             : make === 'volkswagen' && model.includes('passat')
                 ? '/images/Passat.png'
@@ -195,12 +178,12 @@ function App() {
 
                 const vehiculos = await obtenerVehiculos()
 
-                if (activo) S(includeHyundaiI10(vehiculos))
+                if (activo) S(vehiculos)
             } catch (error) {
                 console.error('Error de Supabase:', error)
 
                 if (activo) {
-                    S([LOCAL_HYUNDAI_I10])
+                    S([])
                     E('No se pudieron cargar los vehículos desde Supabase.')
                 }
             } finally {
@@ -247,6 +230,11 @@ function App() {
     }, [user?.id])
 
     async function toggleFavorite(vehiculoId) {
+        if (!esIdVehiculoBigintValido(vehiculoId)) {
+            setFavoritesError('Este vehículo aún no tiene un ID numérico válido en Supabase y no se puede guardar como favorito.')
+            return
+        }
+
         if (!user) {
             setShowAuth(true)
             return
@@ -315,8 +303,6 @@ function App() {
 
         T('catalogo')
 
-        if (v.localOnly) return
-
         try {
             const vehiculo = await obtenerVehiculo(v.id)
 
@@ -357,6 +343,8 @@ function App() {
         car &&
         car.make?.toLowerCase() === 'hyundai' &&
         car.model?.toLowerCase().includes('i10')
+
+    const isCamaro = isCamaro1972(car)
 
     return (
         <div className="autolibrary">
@@ -479,6 +467,8 @@ function App() {
                                 <CarViewer />
                             ) : isHyundaiI10 ? (
                                 <CarViewer modelPath={HYUNDAI_I10_MODEL} />
+                            ) : isCamaro ? (
+                                <PassatViewer modelPath="/models/camaro_1972/car/base_basic_shaded.glb" />
                             ) : isPassat2010 ? (
                                 <PassatViewer modelPath="/models/passat_2010/car/base_basic_shaded.glb" />
                             ) : (
