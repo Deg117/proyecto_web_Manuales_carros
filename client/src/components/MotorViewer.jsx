@@ -88,6 +88,7 @@ function EngineModel({
   onSelect,
   hoveredId,
   onHover,
+  hotspotsVisible,
 }) {
   const modelRoot = useRef(null)
   const { scene } = useGLTF(MODEL)
@@ -109,7 +110,7 @@ function EngineModel({
         object={scene}
         onClick={import.meta.env.DEV && captureMode ? handleModelClick : undefined}
       />
-      {PUNTOS_VALIDOS.map(point => (
+      {hotspotsVisible && PUNTOS_VALIDOS.map(point => (
         <Hotspot
           key={point.id}
           point={point}
@@ -126,6 +127,7 @@ function EngineModel({
 export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
   const [selectedId, setSelectedId] = useState(null)
   const [hoveredId, setHoveredId] = useState(null)
+  const [hotspotsVisible, setHotspotsVisible] = useState(true)
   const [captureMode, setCaptureMode] = useState(false)
   const [capturedPoint, setCapturedPoint] = useState(null)
   const [copyMessage, setCopyMessage] = useState('')
@@ -157,6 +159,15 @@ export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
     setCapturedPoint(point)
     setCopyMessage('')
   }, [])
+
+  function toggleHotspots() {
+    const nextVisibility = !hotspotsVisible
+    setHotspotsVisible(nextVisibility)
+    if (!nextVisibility) {
+      setSelectedId(null)
+      setHoveredId(null)
+    }
+  }
 
   async function copyCapturedPoint() {
     if (!capturedPoint) return
@@ -211,6 +222,7 @@ export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
                     onSelect={setSelectedId}
                     hoveredId={hoveredId}
                     onHover={setHoveredId}
+                    hotspotsVisible={hotspotsVisible}
                   />
                 </Center>
               </Bounds>
@@ -224,6 +236,15 @@ export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
             />
           </ModelErrorBoundary>
         </Canvas>
+
+        <button
+          type="button"
+          className="motor-hotspot-toggle"
+          aria-pressed={hotspotsVisible}
+          onClick={toggleHotspots}
+        >
+          {hotspotsVisible ? 'Ocultar puntos' : 'Mostrar puntos'}
+        </button>
 
         <ModelLoadingOverlay
           loading={loadState.loading}

@@ -7,6 +7,7 @@ import {
 } from 'react'
 
 import { supabase } from '../lib/supabaseClient'
+import { isValidPassword } from './passwordValidation'
 
 const AuthContext = createContext(null)
 
@@ -127,6 +128,16 @@ export function AuthProvider({ children }) {
 
     // Registrar usuario
     async function register(name, email, password) {
+        if (!name.trim()) {
+            throw new Error('Ingresa un nombre de usuario válido.')
+        }
+
+        if (!isValidPassword(password)) {
+            throw new Error(
+                'La contraseña debe tener al menos 8 caracteres, una letra y un número.'
+            )
+        }
+
         const { data, error } = await supabase.auth.signUp({
             email: email.trim().toLowerCase(),
             password,

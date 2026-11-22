@@ -58,6 +58,17 @@
   letter-spacing: -1px;
   text-decoration: none;
 }
+.autolibrary button.logo {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.autolibrary button.logo:focus-visible {
+  outline: 2px solid #F87171;
+  outline-offset: 4px;
+}
 .autolibrary .logo b { font-weight: 500; color: #F87171; }
 .autolibrary .logo small {
   display: block;

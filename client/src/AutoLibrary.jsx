@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './AutoLibrary.css'
 import MotorViewer from './components/MotorViewer'
 import CarViewer from './components/CarViewer'
@@ -204,12 +204,17 @@ function Label({ children }) {
     return <div className="eyebrow"><i />{children}</div>
 }
 
-function Logo() {
+function Logo({ onHome }) {
     return (
-        <a className="logo" href="#">
+        <button
+            type="button"
+            className="logo"
+            aria-label="Ir al inicio de AutoLibrary"
+            onClick={onHome}
+        >
             <i><Icon n="book" /></i>
             <span>auto<b>library</b><small>LA BIBLIOTECA DEL MOTOR</small></span>
-        </a>
+        </button>
     )
 }
 
@@ -262,6 +267,7 @@ function App() {
     const [authError, setAuthError] = useState('')
     const [list, S] = useState([])
     const [car, C] = useState(null)
+    const vehicleRequest = useRef(0)
     const [gear, G] = useState('')
     const [tab, T] = useState('catalogo')
     const [q, Q] = useState('')
@@ -401,6 +407,7 @@ function App() {
 
 
     async function open(v) {
+        const requestId = ++vehicleRequest.current
         C(v)
 
         G(
@@ -414,6 +421,7 @@ function App() {
         try {
             const vehiculo = await obtenerVehiculo(v.id)
 
+            if (requestId !== vehicleRequest.current) return
             console.log('Ficha técnica desde Supabase:', vehiculo)
 
             C(vehiculo)
@@ -423,6 +431,7 @@ function App() {
                     : vehiculo.transmissions[0] || ''
             )
         } catch (error) {
+            if (requestId !== vehicleRequest.current) return
             console.error('Error al cargar vehículo:', error)
             // Conservamos los datos iniciales del catálogo.
         }
@@ -430,9 +439,18 @@ function App() {
 
 
     function go(t) {
+        vehicleRequest.current += 1
         T(t)
         C(null)
         window.scrollTo(0, 0)
+    }
+
+    function goHome() {
+        if (car || tab !== 'catalogo') {
+            go('catalogo')
+        } else if (window.scrollY > 0) {
+            window.scrollTo(0, 0)
+        }
     }
 
     return (
@@ -440,7 +458,7 @@ function App() {
 
             <header>
                 <div className="nav">
-                    <Logo />
+                    <Logo onHome={goHome} />
 
                     <nav>
                         <button onClick={() => go('catalogo')}>
@@ -543,6 +561,7 @@ function App() {
                         favoritesError={favoritesError}
                         onFavoriteToggle={() => toggleFavorite(car.id)}
                         onBack={() => {
+                            vehicleRequest.current += 1
                             C(null)
                             T('catalogo')
                         }}
@@ -721,7 +740,7 @@ function App() {
             )}
 
             <footer>
-                <Logo />
+                <Logo onHome={goHome} />
                 <span>Información automotriz, organizada para encontrarla.</span>
                 <small>© 2026 AUTOLIBRARY</small>
             </footer>

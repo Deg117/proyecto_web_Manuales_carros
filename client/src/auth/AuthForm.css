@@ -41,12 +41,60 @@
     gap: 14px;
 }
 
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    text-align: left;
+}
+
+.auth-field > span:first-child {
+    color: #d7dfeb;
+    font-size: 13px;
+    font-weight: 600;
+}
+
 .auth-panel input {
+    box-sizing: border-box;
+    width: 100%;
     padding: 13px;
     border: 1px solid #45546a;
     border-radius: 8px;
     background: #0d1420;
     color: white;
+}
+
+.auth-panel input[aria-invalid="true"] {
+    border-color: #f87171;
+}
+
+.auth-password-requirements {
+    display: grid;
+    gap: 5px;
+    margin: 0;
+    padding: 0;
+    color: #aab8ca;
+    font-size: 12px;
+    list-style: none;
+}
+
+.auth-password-requirements li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-password-requirements .is-met {
+    color: #86efac;
+}
+
+.auth-password-requirements .is-pending {
+    color: #aab8ca;
+}
+
+.auth-field-error {
+    color: #fca5a5;
+    font-size: 12px;
 }
 
 .auth-panel form button {
