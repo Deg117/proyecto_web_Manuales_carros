@@ -5,9 +5,9 @@ import * as THREE from 'three'
 import './CarViewer.css'
 import ModelErrorBoundary from './ModelErrorBoundary'
 import ModelLoadingOverlay from './ModelLoadingOverlay'
+import { MODELOS_3D } from '../config/modelos3d'
 
-const CIVIC_MODEL = '/models/civic-2003/car/civic_pbr.glb'
-export const HYUNDAI_I10_MODEL = '/models/hyundai_i10/car/base_basic_pbr.glb'
+const CIVIC_MODEL = MODELOS_3D.hondaCivic2003
 
 function SceneNode({ object, onSelect }) {
   const props = {
@@ -79,37 +79,55 @@ function SelectionMarker({ point }) {
 
 export default function CarViewer({
   modelPath = CIVIC_MODEL,
+  fallbackModelPath,
   vehicleName = 'Honda Civic 2003',
 }) {
   const [selected, setSelected] = useState(null)
   const [retryCount, setRetryCount] = useState(0)
+  const [usingFallback, setUsingFallback] = useState(false)
+  const activeModelPath = usingFallback && fallbackModelPath
+    ? fallbackModelPath
+    : modelPath
   const [loadState, setLoadState] = useState({
     modelPath,
     loading: true,
     error: '',
   })
-  const visibleState = loadState.modelPath === modelPath
+  const visibleState = loadState.modelPath === activeModelPath
     ? loadState
     : { loading: true, error: '' }
 
   const onModelReady = useCallback(() => {
-    setLoadState({ modelPath, loading: false, error: '' })
-  }, [modelPath])
+    setLoadState({ modelPath: activeModelPath, loading: false, error: '' })
+  }, [activeModelPath])
 
   const onModelError = useCallback(error => {
-    console.error(`Error cargando modelo 3D (${modelPath}):`, error)
+    if (!usingFallback && fallbackModelPath) {
+      console.warn(
+        `No se pudo cargar el modelo remoto (${modelPath}); se intentará el respaldo local (${fallbackModelPath}).`,
+        error,
+      )
+      setUsingFallback(true)
+      return
+    }
+
+    console.error(`Error cargando modelo 3D (${activeModelPath}):`, error)
     setLoadState({
-      modelPath,
+      modelPath: activeModelPath,
       loading: false,
       error: 'Comprueba la conexión e inténtalo de nuevo.',
     })
-  }, [modelPath])
+  }, [activeModelPath, fallbackModelPath, modelPath, usingFallback])
 
   const retryModel = useCallback(() => {
+    useGLTF.clear(activeModelPath)
+    if (usingFallback && fallbackModelPath) {
+      useGLTF.clear(modelPath)
+      setUsingFallback(false)
+    }
     setLoadState({ modelPath, loading: true, error: '' })
-    useGLTF.clear(modelPath)
     setRetryCount(count => count + 1)
-  }, [modelPath])
+  }, [activeModelPath, fallbackModelPath, modelPath, usingFallback])
 
   return (
     <div className="car-viewer">
@@ -125,14 +143,14 @@ export default function CarViewer({
           <directionalLight position={[-4, 2, -3]} intensity={0.8} />
 
           <ModelErrorBoundary
-            key={`${modelPath}:${retryCount}`}
+            key={`${activeModelPath}:${retryCount}`}
             onError={onModelError}
           >
             <Suspense fallback={null}>
               <Bounds fit clip observe margin={1.25}>
                 <Center>
                   <CarModel
-                    modelPath={modelPath}
+                    modelPath={activeModelPath}
                     onSelect={setSelected}
                     onReady={onModelReady}
                   />
@@ -159,7 +177,7 @@ export default function CarViewer({
         vehicleName={vehicleName}
         error={visibleState.error}
         onRetry={retryModel}
-        attemptKey={`${modelPath}:${retryCount}`}
+        attemptKey={`${activeModelPath}:${retryCount}`}
       />
     </div>
   )

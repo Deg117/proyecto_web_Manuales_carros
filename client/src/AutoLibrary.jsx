@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import './AutoLibrary.css'
 import MotorViewer from './components/MotorViewer'
-import CarViewer, { HYUNDAI_I10_MODEL } from './components/CarViewer'
+import CarViewer from './components/CarViewer'
 import PassatViewer from './components/PassatViewer'
 import VehicleDetailLayout from './components/VehicleDetailLayout'
+import { MODELOS_3D, RESPALDOS_LOCALES } from './config/modelos3d'
 import { useAuth } from './auth/AuthContext'
 import AuthForm from './auth/AuthForm'
 import {
@@ -42,6 +43,12 @@ function isHyundaiI10(vehicle) {
         vehicle.model?.toLowerCase().includes('i10')
 }
 
+function isFordFiesta2014(vehicle) {
+    return vehicle?.make?.toLowerCase() === 'ford' &&
+        vehicle.model?.toLowerCase().includes('fiesta') &&
+        Number(vehicle.year) === 2014
+}
+
 function getVehicleImage(vehicle) {
     if (isCamaro1972(vehicle)) return '/images/Camaro.png'
     if (vehicle.make?.toLowerCase() === 'honda' && vehicle.model?.toLowerCase().includes('civic')) {
@@ -51,6 +58,7 @@ function getVehicleImage(vehicle) {
         return '/images/Passat.png'
     }
     if (isHyundaiI10(vehicle)) return '/images/i10.png'
+    if (isFordFiesta2014(vehicle)) return '/images/fiesta.png'
     return vehicle.imageUrl || null
 }
 
@@ -60,13 +68,30 @@ function VehicleDisplay({ vehicle }) {
         .join(' ')
 
     if (isCivic2003(vehicle)) {
-        return <CarViewer key="civic-2003" vehicleName={vehicleName} />
+        return (
+            <CarViewer
+                key="civic-2003"
+                modelPath={MODELOS_3D.hondaCivic2003}
+                fallbackModelPath={import.meta.env.DEV ? RESPALDOS_LOCALES.hondaCivic2003 : undefined}
+                vehicleName={vehicleName}
+            />
+        )
     }
     if (isHyundaiI10(vehicle)) {
         return (
             <CarViewer
-                key={HYUNDAI_I10_MODEL}
-                modelPath={HYUNDAI_I10_MODEL}
+                key={MODELOS_3D.hyundaiI102025}
+                modelPath={MODELOS_3D.hyundaiI102025}
+                fallbackModelPath={import.meta.env.DEV ? RESPALDOS_LOCALES.hyundaiI102025 : undefined}
+                vehicleName={vehicleName}
+            />
+        )
+    }
+    if (isFordFiesta2014(vehicle)) {
+        return (
+            <PassatViewer
+                key="fiesta-2014"
+                modelPath={MODELOS_3D.fordFiesta2014}
                 vehicleName={vehicleName}
             />
         )
@@ -75,7 +100,8 @@ function VehicleDisplay({ vehicle }) {
         return (
             <PassatViewer
                 key="camaro-1972"
-                modelPath="https://pub-588d4cf78a8b4cd38f882ff7e4ebb548.r2.dev/camaro_1972/base_basic_pbr.glb"
+                modelPath={MODELOS_3D.chevroletCamaro1972}
+                fallbackModelPath={import.meta.env.DEV ? RESPALDOS_LOCALES.chevroletCamaro1972 : undefined}
                 vehicleName={vehicleName}
             />
         )
@@ -84,22 +110,14 @@ function VehicleDisplay({ vehicle }) {
         return (
             <PassatViewer
                 key="passat-2010"
-                modelPath="/models/passat_2010/car/base_basic_shaded.glb"
+                modelPath={MODELOS_3D.volkswagenPassat2010}
+                fallbackModelPath={import.meta.env.DEV ? RESPALDOS_LOCALES.volkswagenPassat2010 : undefined}
                 vehicleName={vehicleName}
             />
         )
     }
 
-    const image = getVehicleImage(vehicle)
-    return image ? (
-        <img
-            className="vehicle-reference-image"
-            src={image}
-            alt={`${vehicle.make} ${vehicle.model}${vehicle.year ? ` ${vehicle.year}` : ''}`}
-        />
-    ) : (
-        <p className="vehicle-visual-pending">Vista del vehículo pendiente de registrar</p>
-    )
+    return <VehicleImage vehicle={vehicle} className="vehicle-reference-image" />
 }
 
 const P = {
@@ -130,6 +148,40 @@ function Icon({ n }) {
     )
 }
 
+function VehicleImage({ vehicle, className, compact = false }) {
+    const source = getVehicleImage(vehicle)
+    const [failedSource, setFailedSource] = useState('')
+    const alt = `${vehicle.make} ${vehicle.model}${vehicle.year ? ` ${vehicle.year}` : ''}`
+
+    if (!source || failedSource === source) {
+        return <VehiclePlaceholder vehicle={vehicle} compact={compact} />
+    }
+
+    return (
+        <img
+            className={className}
+            src={source}
+            alt={alt}
+            onError={() => setFailedSource(source)}
+        />
+    )
+}
+
+function VehiclePlaceholder({ vehicle, compact = false }) {
+    const name = `${vehicle.make} ${vehicle.model}${vehicle.year ? ` ${vehicle.year}` : ''}`
+
+    return (
+        <div
+            className={`vehicle-visual-placeholder${compact ? ' is-compact' : ''}`}
+            role="img"
+            aria-label={`Imagen de ${name} pendiente de registrar`}
+        >
+            <Icon n="car" />
+            <span>Imagen pendiente de registrar</span>
+        </div>
+    )
+}
+
 function Label({ children }) {
     return <div className="eyebrow"><i />{children}</div>
 }
@@ -144,20 +196,12 @@ function Logo() {
 }
 
 function VehicleCard({ v, onOpen, onToggle, isFavorite, busy }) {
-    const carImage = getVehicleImage(v)
-
     return (
         <div className="favorite-card-shell">
             <button type="button" className="card" onClick={onOpen}>
                 <div className="car-bg">
                     <span>{v.year}</span>
-                    {carImage && (
-                        <img
-                            src={carImage}
-                            alt={`${v.make} ${v.model} ${v.year}`}
-                            className="catalog-car-image"
-                        />
-                    )}
+                    <VehicleImage vehicle={v} className="catalog-car-image" compact />
                 </div>
                 <div className="card-info">
                     <small>
@@ -467,6 +511,7 @@ function App() {
                         isInteractive={
                             isCivic2003(car) ||
                             isHyundaiI10(car) ||
+                            isFordFiesta2014(car) ||
                             isPassat2010(car) ||
                             isCamaro1972(car)
                         }

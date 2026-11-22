@@ -578,6 +578,38 @@
   z-index: 1;
 }
 
+.autolibrary .vehicle-visual-placeholder {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: radial-gradient(ellipse at center, #272D36 0%, #161A20 72%);
+  color: #A1AAB8;
+  font-size: 11px;
+  text-align: center;
+}
+
+.autolibrary .vehicle-visual-placeholder > svg {
+  width: 48px;
+  height: 48px;
+  color: #F87171;
+}
+
+.autolibrary .vehicle-visual-placeholder.is-compact {
+  position: relative;
+  z-index: 1;
+  gap: 8px;
+  font-size: 9px;
+}
+
+.autolibrary .vehicle-visual-placeholder.is-compact > svg {
+  width: 38px;
+  height: 38px;
+}
+
 /* Año del vehículo */
 .autolibrary .car-bg > span {
   position: absolute;
@@ -836,16 +868,6 @@
   padding: 24px;
   object-fit: contain;
   object-position: center;
-}
-
-.autolibrary .vehicle-visual-pending {
-  display: grid;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  place-items: center;
-  color: var(--al-muted);
-  font-size: 13px;
 }
 
 .autolibrary .vehicle-fullscreen {

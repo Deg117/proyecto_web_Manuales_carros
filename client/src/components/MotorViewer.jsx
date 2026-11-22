@@ -6,11 +6,13 @@ import * as THREE from 'three'
 import './MotorViewer.css'
 import ModelErrorBoundary from './ModelErrorBoundary'
 import ModelLoadingOverlay from './ModelLoadingOverlay'
+import { MODELOS_3D } from '../config/modelos3d'
 
-const MODEL = '/models/civic-2003/engine/complete/motor_pbr.glb'
+const MODEL = MODELOS_3D.hondaD17A2
 
 function SceneNode({ object, onSelect }) {
   const props = {
+    name: object.name,
     position: object.position,
     quaternion: object.quaternion,
     scale: object.scale,

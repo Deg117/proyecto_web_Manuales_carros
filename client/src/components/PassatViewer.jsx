@@ -3,16 +3,22 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import ModelLoadingOverlay from './ModelLoadingOverlay'
+import { MODELOS_3D } from '../config/modelos3d'
 
 export default function PassatViewer({
-  modelPath = '/models/passat_2010/car/base_basic_shaded.glb',
+  modelPath = MODELOS_3D.volkswagenPassat2010,
+  fallbackModelPath,
   vehicleName = 'Volkswagen Passat 2010',
 }) {
   const containerRef = useRef(null)
   const pendingAbortRef = useRef(null)
   const activeLoadingManagerRef = useRef(null)
   const [retryCount, setRetryCount] = useState(0)
-  const requestKey = `${modelPath}:${retryCount}`
+  const [usingFallback, setUsingFallback] = useState(false)
+  const activeModelPath = usingFallback && fallbackModelPath
+    ? fallbackModelPath
+    : modelPath
+  const requestKey = `${activeModelPath}:${retryCount}`
   const [loadState, setLoadState] = useState({
     key: '',
     loading: true,
@@ -25,8 +31,9 @@ export default function PassatViewer({
 
   const retryModel = useCallback(() => {
     activeLoadingManagerRef.current?.abort()
+    if (usingFallback && fallbackModelPath) setUsingFallback(false)
     setRetryCount(count => count + 1)
-  }, [])
+  }, [fallbackModelPath, usingFallback])
 
   useEffect(() => {
     const container = containerRef.current
@@ -122,7 +129,7 @@ export default function PassatViewer({
     activeLoadingManagerRef.current = loadingManager
     const loader = new GLTFLoader(loadingManager)
     loader.load(
-      modelPath,
+      activeModelPath,
       gltf => {
         if (disposed) {
           gltf.scene.traverse(obj => {
@@ -165,7 +172,16 @@ export default function PassatViewer({
       },
       err => {
         if (!disposed) {
-          console.error(`Error cargando modelo 3D (${modelPath}):`, err)
+          if (!usingFallback && fallbackModelPath) {
+            console.warn(
+              `No se pudo cargar el modelo remoto (${modelPath}); se intentará el respaldo local (${fallbackModelPath}).`,
+              err,
+            )
+            setUsingFallback(true)
+            return
+          }
+
+          console.error(`Error cargando modelo 3D (${activeModelPath}):`, err)
           setLoadState({
             key: requestKey,
             loading: false,
@@ -214,7 +230,7 @@ export default function PassatViewer({
       renderer.dispose()
       renderer.domElement.remove()
     }
-  }, [modelPath, requestKey])
+  }, [activeModelPath, fallbackModelPath, modelPath, requestKey, usingFallback])
 
   return (
     <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative' }}>
