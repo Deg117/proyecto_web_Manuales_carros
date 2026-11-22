@@ -19,6 +19,7 @@ import {
     esIdVehiculoBigintValido
 } from './lib/favoritos'
 import './favoritos.css'
+import './biblioteca.css'
 
 function isCamaro1972(vehicle) {
     return vehicle?.make?.toLowerCase() === 'chevrolet' &&
@@ -723,54 +724,102 @@ function Filter({ label, value, options, empty, change }) {
     )
 }
 
+// Referencias iniciales: enlaces externos, no copias alojadas de los PDF.
+const MANUALES_OFICIALES = {
+    civic2003: [{
+        id: 'honda-civic-2003-propietario',
+        titulo: 'Manual del propietario — Civic Sedán 2003',
+        categoria: 'Manual del propietario',
+        descripcion: 'Documento oficial de Honda en inglés. Incluye uso, seguridad y mantenimiento.',
+        archivo_url: 'https://techinfo.honda.com/rjanisis/pubs/om/CI0303/CI0303MAINIXB.pdf',
+        fuente: 'Honda'
+    }],
+}
+
+const GUIAS_MANTENIMIENTO = [
+    { id: 'aceite', titulo: 'Aceite y filtro de motor', sistema: 'Motor', resumen: 'Verificar nivel, especificación de aceite, filtro e intervalo aplicable.', precaucion: 'No trabajar sobre piezas calientes; desechar el aceite en un centro de acopio.' },
+    { id: 'aire', titulo: 'Filtro de aire', sistema: 'Admisión', resumen: 'Inspección del elemento filtrante y revisión de la caja del filtro.' },
+    { id: 'bujias', titulo: 'Bujías', sistema: 'Encendido', resumen: 'Comprobar el tipo de bujía recomendado y el procedimiento de sustitución.', precaucion: 'No intervenir el encendido con el motor en marcha.' },
+    { id: 'refrigerante', titulo: 'Sistema de refrigeración', sistema: 'Motor', resumen: 'Revisar el nivel, fugas y especificación del refrigerante.', precaucion: 'Nunca abrir la tapa del radiador con el motor caliente.' },
+    { id: 'transmision', titulo: 'Fluido de transmisión', sistema: 'Transmisión', resumen: 'Consultar el fluido y procedimiento específicos de la transmisión seleccionada.' },
+    { id: 'frenos', titulo: 'Frenos', sistema: 'Seguridad', resumen: 'Inspección de pastillas, discos, fugas y fluido de frenos.', precaucion: 'Una falla de frenos debe revisarla personal calificado antes de circular.' },
+    { id: 'distribucion', titulo: 'Distribución del motor', sistema: 'Motor', resumen: 'Identificar si el motor utiliza correa o cadena y consultar su plan de inspección o sustitución.', precaucion: 'Una instalación incorrecta puede ocasionar daños graves al motor.' },
+    { id: 'fusibles', titulo: 'Fusibles y sistema eléctrico', sistema: 'Eléctrico', resumen: 'Localizar cajas de fusibles y consultar el amperaje correspondiente.', precaucion: 'Nunca sustituir un fusible por uno de amperaje superior.' }
+]
+
+function MantenimientoBiblioteca({ car, gear }) {
+    const [busqueda, setBusqueda] = useState('')
+    const [activo, setActivo] = useState(null)
+    const visibles = GUIAS_MANTENIMIENTO.filter(item =>
+        `${item.titulo} ${item.sistema}`.toLowerCase().includes(busqueda.toLowerCase())
+    )
+    const manual = isCivic2003(car) ? MANUALES_OFICIALES.civic2003[0] : null
+    return (
+        <section className="panel biblioteca-section">
+            <Label>MANTENIMIENTO</Label>
+            <h2>Guía de servicio</h2>
+            <p className="biblioteca-muted">Temas de mantenimiento para {car.make} {car.model} {car.year}{gear ? ` · ${gear}` : ''}. Los intervalos, fluidos y torques deben comprobarse con documentación de la versión exacta.</p>
+            <label className="biblioteca-search">
+                <span>Buscar mantenimiento</span>
+                <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Ej. aceite, bujías, frenos..." />
+            </label>
+            <div className="biblioteca-grid">
+                {visibles.map(item => (
+                    <article className="biblioteca-card" key={item.id}>
+                        <small>{item.sistema.toUpperCase()}</small>
+                        <h3>{item.titulo}</h3>
+                        <p>{item.resumen}</p>
+                        <button type="button" onClick={() => setActivo(activo === item.id ? null : item.id)} aria-expanded={activo === item.id}>
+                            {activo === item.id ? 'Cerrar detalles' : 'Ver detalles'}
+                        </button>
+                        {activo === item.id && (
+                            <div className="biblioteca-detail">
+                                <p><strong>Intervalo y especificaciones:</strong> pendientes de validación para este vehículo.</p>
+                                {item.precaucion && <p><strong>Precaución:</strong> {item.precaucion}</p>}
+                                {manual && <a href={manual.archivo_url} target="_blank" rel="noopener noreferrer">Consultar manual oficial de Honda ↗</a>}
+                            </div>
+                        )}
+                    </article>
+                ))}
+            </div>
+            {!visibles.length && <p className="biblioteca-muted">No se encontraron mantenimientos con ese término.</p>}
+        </section>
+    )
+}
+
 function Content({ car, gear, tab }) {
     if (tab === 'mantenimiento') {
-        return (
-            <section className="panel">
-                <Label>MANTENIMIENTO</Label>
-                <h2>Guía de servicio</h2>
-                <Pending
-                    title="Plan de mantenimiento en preparación"
-                    text="Procedimientos e intervalos pendientes de documentación para esta versión."
-                />
-            </section>
-        )
+        return <MantenimientoBiblioteca car={car} gear={gear} />
     }
 
-
     if (tab === 'documentos') {
-        const documentos = car.documentos || []
+        const documentosGuardados = Array.isArray(car.documentos) ? car.documentos : []
+        const referencias = isCivic2003(car) ? MANUALES_OFICIALES.civic2003 : []
+        const documentos = [...documentosGuardados, ...referencias.filter(ref =>
+            !documentosGuardados.some(doc => doc.archivo_url === ref.archivo_url)
+        )]
 
         return (
-            <section className="panel">
+            <section className="panel biblioteca-section">
                 <Label>DOCUMENTOS</Label>
                 <h2>Manuales y diagramas</h2>
-
+                <p className="biblioteca-muted">Documentación relacionada con {car.make} {car.model} {car.year}. Verifica la versión antes de realizar reparaciones.</p>
                 {documentos.length > 0 ? (
-                    <div className="documents-list">
-                        {documentos.map(doc => (
-                            <div className="document-item" key={doc.id}>
+                    <div className="biblioteca-grid">
+                        {documentos.map((doc, index) => (
+                            <article className="biblioteca-card" key={doc.id ?? `${doc.archivo_url}-${index}`}>
+                                <small>{displayData(doc.categoria)}</small>
                                 <h3>{displayData(doc.titulo)}</h3>
-                                <p>{displayData(doc.categoria)}</p>
                                 <p>{displayData(doc.descripcion)}</p>
-
-                                {doc.archivo_url && (
-                                    <a
-                                        href={doc.archivo_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        Consultar documento
-                                    </a>
-                                )}
-                            </div>
+                                {doc.fuente && <p>Fuente: {doc.fuente}</p>}
+                                {doc.archivo_url ? (
+                                    <a href={doc.archivo_url} target="_blank" rel="noopener noreferrer">Consultar documento ↗</a>
+                                ) : <span className="biblioteca-muted">Archivo aún no disponible</span>}
+                            </article>
                         ))}
                     </div>
                 ) : (
-                    <Pending
-                        title="Aún no hay documentos disponibles"
-                        text="Todavía no se han registrado manuales para este vehículo."
-                    />
+                    <Pending title="Aún no hay documentos disponibles" text="Todavía no se han registrado manuales para este vehículo." />
                 )}
             </section>
         )

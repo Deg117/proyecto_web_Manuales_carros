@@ -9,8 +9,8 @@ export const MODELOS_3D = {
     volkswagenPassat2010: `${R2_BASE_URL}/passat_2010/base_basic_shaded.glb`,
     chevroletCamaro1972: `${R2_BASE_URL}/camaro_1972/base_basic_pbr.glb`,
     hyundaiI102025: `${R2_BASE_URL}/i10_2025/base_basic_pbr.glb`,
-    // The complete model is one mesh; use the existing split local asset for piece selection.
-    hondaD17A2: '/models/civic-2003/engine/separeted/motor_12_piezas.glb',
+    // Keep the original complete local engine model.
+    hondaD17A2: '/models/civic-2003/engine/complete/motor_pbr.glb',
     hondaD17A2Remote: `${R2_BASE_URL}/motor_civic/base_basic_pbr.glb`,
     hondaD17A2RemoteShaded: `${R2_BASE_URL}/motor_civic/base_basic_shaded.glb`,
 }
