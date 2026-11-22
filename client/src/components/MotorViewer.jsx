@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Bounds, Center, Html, OrbitControls, useGLTF } from '@react-three/drei'
 import './MotorViewer.css'
@@ -30,10 +30,18 @@ const PUNTOS_VALIDOS = (Array.isArray(PUNTOS_MOTOR_D17A2) ? PUNTOS_MOTOR_D17A2 :
     return true
   })
 
-function Hotspot({ point, occlusionTargets, selected, hovered, onSelect, onHover }) {
+
+function Hotspot({
+  point,
+  selected,
+  hovered,
+  onSelect,
+  onHover
+}) {
   return (
     <group position={point.posicion}>
       <mesh
+        scale={selected || hovered ? 1.18 : 1}
         onClick={event => {
           event.stopPropagation()
           onSelect(point.id)
@@ -47,15 +55,23 @@ function Hotspot({ point, occlusionTargets, selected, hovered, onSelect, onHover
           onHover(null)
         }}
       >
-        <sphereGeometry args={[0.045, 16, 16]} />
+        <sphereGeometry args={[0.045, 12, 12]} />
         <meshBasicMaterial
-          color={selected ? '#ff4b45' : '#d62828'}
-          transparent
-          opacity={0.9}
+          color={
+            selected
+              ? '#ff4b45'
+              : hovered
+                ? '#ff7777'
+                : '#d62828'
+          }
         />
       </mesh>
-      <Html center occlude={occlusionTargets} style={{ pointerEvents: 'none' }}>
-        <span className={`motor-hotspot-icon${selected ? ' is-selected' : ''}${hovered ? ' is-hovered' : ''}`}>
+      <Html center style={{ pointerEvents: 'none' }}>
+        <span
+          className={
+            `motor-hotspot-icon${selected ? ' is-selected' : ''}${hovered ? ' is-hovered' : ''}`
+          }
+        >
           i
         </span>
       </Html>
@@ -63,35 +79,40 @@ function Hotspot({ point, occlusionTargets, selected, hovered, onSelect, onHover
   )
 }
 
-function EngineModel({ onReady, onCapturePoint, selectedId, onSelect, hoveredId, onHover }) {
+
+function EngineModel({
+  onReady,
+  onCapturePoint,
+  captureMode,
+  selectedId,
+  onSelect,
+  hoveredId,
+  onHover,
+}) {
   const modelRoot = useRef(null)
   const { scene } = useGLTF(MODEL)
-  const modelSceneRef = useRef(scene)
-  const occlusionTargets = useMemo(() => [modelSceneRef], [modelSceneRef])
   useEffect(() => {
-    modelSceneRef.current = scene
     onReady()
   }, [onReady, scene])
 
   const handleModelClick = useCallback(event => {
-    if (!import.meta.env.DEV || !event.nativeEvent.altKey || !modelRoot.current) return
+    if (!captureMode || !event.nativeEvent.altKey || !modelRoot.current) return
 
     event.stopPropagation()
     const localPoint = modelRoot.current.worldToLocal(event.point.clone())
     onCapturePoint(localPoint.toArray().map(value => Number(value.toFixed(4))))
-  }, [onCapturePoint])
+  }, [captureMode, onCapturePoint])
 
   return (
     <group ref={modelRoot}>
       <primitive
         object={scene}
-        onClick={import.meta.env.DEV ? handleModelClick : undefined}
+        onClick={import.meta.env.DEV && captureMode ? handleModelClick : undefined}
       />
       {PUNTOS_VALIDOS.map(point => (
         <Hotspot
           key={point.id}
           point={point}
-          occlusionTargets={occlusionTargets}
           selected={selectedId === point.id}
           hovered={hoveredId === point.id}
           onSelect={onSelect}
@@ -105,6 +126,7 @@ function EngineModel({ onReady, onCapturePoint, selectedId, onSelect, hoveredId,
 export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
   const [selectedId, setSelectedId] = useState(null)
   const [hoveredId, setHoveredId] = useState(null)
+  const [captureMode, setCaptureMode] = useState(false)
   const [capturedPoint, setCapturedPoint] = useState(null)
   const [copyMessage, setCopyMessage] = useState('')
   const [retryCount, setRetryCount] = useState(0)
@@ -163,16 +185,17 @@ export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
 
       <div className={`motor-canvas${hoveredId ? ' has-hotspot-hover' : ''}`}>
         <Canvas
+          frameloop="demand"
           camera={{ position: [0, 1.5, 4], fov: 45 }}
-          shadows
-          dpr={[1, 2]}
+          dpr={1}
+          shadows={false}
+          gl={{ powerPreference: 'high-performance' }}
         >
           <color attach="background" args={['#283818']} />
           <ambientLight intensity={1.5} />
           <directionalLight
             position={[4, 6, 5]}
             intensity={2}
-            castShadow
           />
           <directionalLight position={[-4, 2, -3]} intensity={0.8} />
 
@@ -183,6 +206,7 @@ export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
                   <EngineModel
                     onReady={onModelReady}
                     onCapturePoint={capturePoint}
+                    captureMode={captureMode}
                     selectedId={selectedId}
                     onSelect={setSelectedId}
                     hoveredId={hoveredId}
@@ -240,7 +264,19 @@ export default function MotorViewer({ vehicleName = 'Motor Honda D17A2' }) {
       {import.meta.env.DEV && (
         <div className="motor-dev-capture" aria-live="polite">
           <strong>Captura de coordenadas (desarrollo)</strong>
-          <p>Alt + clic sobre el motor para capturar la posición local de la superficie.</p>
+          <p>
+            {captureMode
+              ? 'Modo activo: mantén Alt y haz clic sobre el motor. Desactívalo con el botón cuando termines.'
+              : 'Activa el modo para capturar una coordenada con Alt + clic; así el motor no participa en el raycasting normalmente.'}
+          </p>
+          <button
+            type="button"
+            className="motor-capture-toggle"
+            aria-pressed={captureMode}
+            onClick={() => setCaptureMode(active => !active)}
+          >
+            {captureMode ? 'Desactivar captura' : 'Activar captura'}
+          </button>
           {capturedPoint && (
             <div className="motor-capture-result">
               <code>[{capturedPoint.join(', ')}]</code>

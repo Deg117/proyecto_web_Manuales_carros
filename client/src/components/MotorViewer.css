@@ -179,7 +179,8 @@
 }
 
 .motor-information button,
-.motor-capture-result button {
+.motor-capture-result button,
+.motor-capture-toggle {
   flex: 0 0 auto;
   padding: 7px 10px;
   border: 1px solid #444d5a;
@@ -192,9 +193,15 @@
 }
 
 .motor-information button:hover,
-.motor-capture-result button:hover {
+.motor-capture-result button:hover,
+.motor-capture-toggle:hover {
   border-color: #D62828;
   background: #292F38;
+}
+
+.motor-capture-toggle:focus-visible {
+  outline: 2px solid #F87171;
+  outline-offset: 2px;
 }
 
 .motor-dev-capture {
