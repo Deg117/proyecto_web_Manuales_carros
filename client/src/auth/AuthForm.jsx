@@ -5,6 +5,7 @@ import {
   getPasswordRequirements,
   isValidEmail,
 } from './passwordValidation'
+import { FIELD_LIMITS } from './fieldLimits'
 import './AuthForm.css'
 
 function getAuthErrorMessage(error) {
@@ -59,9 +60,22 @@ export default function AuthForm({ onClose }) {
     setError('')
     setMessage('')
 
+    if (email.length > FIELD_LIMITS.email) {
+      setError(`El correo electrónico no puede superar ${FIELD_LIMITS.email} caracteres.`)
+      return
+    }
+    if (password.length > FIELD_LIMITS.password) {
+      setError(`La contraseña no puede superar ${FIELD_LIMITS.password} caracteres.`)
+      return
+    }
+
     if (mode === 'register') {
       if (!name.trim()) {
         setError('Ingresa un nombre de usuario válido.')
+        return
+      }
+      if (name.length > FIELD_LIMITS.username) {
+        setError(`El nombre no puede superar ${FIELD_LIMITS.username} caracteres.`)
         return
       }
       if (!isValidEmail(email)) {
@@ -70,6 +84,10 @@ export default function AuthForm({ onClose }) {
       }
       if (!passwordRequirements.every(requirement => requirement.met)) {
         setError('La contraseña debe cumplir todos los requisitos indicados.')
+        return
+      }
+      if (confirmPassword.length > FIELD_LIMITS.password) {
+        setError(`La confirmación no puede superar ${FIELD_LIMITS.password} caracteres.`)
         return
       }
       if (!confirmPassword || password !== confirmPassword) {
@@ -111,15 +129,21 @@ export default function AuthForm({ onClose }) {
   const passwordRequirements = getPasswordRequirements(password)
   const registrationValid = mode !== 'register' || (
     Boolean(name.trim()) &&
+    name.length <= FIELD_LIMITS.username &&
+    email.length <= FIELD_LIMITS.email &&
     isValidEmail(email) &&
+    password.length <= FIELD_LIMITS.password &&
     passwordRequirements.every(requirement => requirement.met) &&
+    confirmPassword.length <= FIELD_LIMITS.password &&
     Boolean(confirmPassword) &&
     password === confirmPassword
   )
   const passwordsMismatch = Boolean(confirmPassword) && password !== confirmPassword
   const confirmationMissing = mode === 'register' && Boolean(password) && !confirmPassword
-  const invalidEmail = Boolean(email) && !isValidEmail(email)
-  const invalidName = Boolean(name) && !name.trim()
+  const invalidEmail = Boolean(email) &&
+    (email.length > FIELD_LIMITS.email || !isValidEmail(email))
+  const invalidName = Boolean(name) &&
+    (!name.trim() || name.length > FIELD_LIMITS.username)
 
   return (
     <div className="auth-overlay" onClick={onClose}>
@@ -154,6 +178,7 @@ export default function AuthForm({ onClose }) {
               <input
                 type="text"
                 placeholder="Nombre completo"
+                maxLength={FIELD_LIMITS.username}
                 value={name}
                 onChange={event => setName(event.target.value)}
                 autoComplete="name"
@@ -163,7 +188,14 @@ export default function AuthForm({ onClose }) {
               />
               {invalidName && (
                 <span className="auth-field-error" id="auth-name-error" role="alert">
-                  Ingresa un nombre de usuario válido.
+                  {name.length > FIELD_LIMITS.username
+                    ? `El nombre no puede superar ${FIELD_LIMITS.username} caracteres.`
+                    : 'Ingresa un nombre de usuario válido.'}
+                </span>
+              )}
+              {name.length >= FIELD_LIMITS.username && (
+                <span className="auth-limit-message" role="status">
+                  Límite de caracteres alcanzado
                 </span>
               )}
             </label>
@@ -174,6 +206,7 @@ export default function AuthForm({ onClose }) {
             <input
               type="email"
               placeholder="Correo electrónico"
+              maxLength={100}
               value={email}
               onChange={event => setEmail(event.target.value)}
               autoComplete="email"
@@ -181,9 +214,16 @@ export default function AuthForm({ onClose }) {
               aria-describedby={invalidEmail ? 'auth-email-error' : undefined}
               required
             />
+            {email.length >= 100 && (
+              <span className="auth-limit-message" role="status">
+                Límite de caracteres alcanzado
+              </span>
+            )}
             {invalidEmail && (
               <span className="auth-field-error" id="auth-email-error" role="alert">
-                Ingresa un correo electrónico válido.
+                {email.length > FIELD_LIMITS.email
+                  ? `El correo electrónico no puede superar ${FIELD_LIMITS.email} caracteres.`
+                  : 'Ingresa un correo electrónico válido.'}
               </span>
             )}
           </label>
@@ -193,6 +233,7 @@ export default function AuthForm({ onClose }) {
             <input
               type="password"
               placeholder="Contraseña"
+              maxLength={FIELD_LIMITS.password}
               value={password}
               onChange={event => setPassword(event.target.value)}
               autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
@@ -201,6 +242,11 @@ export default function AuthForm({ onClose }) {
               aria-describedby={mode === 'register' ? 'auth-password-requirements' : undefined}
               required
             />
+            {password.length >= FIELD_LIMITS.password && (
+              <span className="auth-limit-message" role="status">
+                Límite de caracteres alcanzado
+              </span>
+            )}
             {mode === 'register' && (
               <ul
                 className="auth-password-requirements"
@@ -228,6 +274,7 @@ export default function AuthForm({ onClose }) {
               <input
                 type="password"
                 placeholder="Confirmar contraseña"
+                maxLength={FIELD_LIMITS.password}
                 value={confirmPassword}
                 onChange={event => setConfirmPassword(event.target.value)}
                 autoComplete="new-password"
@@ -237,6 +284,11 @@ export default function AuthForm({ onClose }) {
                 }
                 required
               />
+              {confirmPassword.length >= FIELD_LIMITS.password && (
+                <span className="auth-limit-message" role="status">
+                  Límite de caracteres alcanzado
+                </span>
+              )}
               {(passwordsMismatch || confirmationMissing) && (
                 <span className="auth-field-error" id="auth-confirm-error" role="alert">
                   {passwordsMismatch

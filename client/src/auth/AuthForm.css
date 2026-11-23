@@ -97,6 +97,11 @@
     font-size: 12px;
 }
 
+.auth-field .auth-limit-message {
+    color: #D62828;
+    font-size: 12px;
+}
+
 .auth-panel form button {
     padding: 13px;
     border: 0;

@@ -7,6 +7,7 @@ import VehicleDetailLayout from './components/VehicleDetailLayout'
 import { MODELOS_3D, RESPALDOS_LOCALES } from './config/modelos3d'
 import { useAuth } from './auth/AuthContext'
 import AuthForm from './auth/AuthForm'
+import { FIELD_LIMITS } from './auth/fieldLimits'
 import {
     obtenerVehiculos,
     obtenerVehiculo
@@ -620,6 +621,7 @@ function App() {
                                     <input
                                         aria-label="Buscar vehículo"
                                         placeholder="Buscar vehículo..."
+                                        maxLength={FIELD_LIMITS.search}
                                         value={q}
                                         onChange={e => Q(e.target.value)}
                                     />
@@ -856,7 +858,12 @@ function MantenimientoBiblioteca({ car, gear }) {
             <p className="biblioteca-muted">Temas de mantenimiento para {car.make} {car.model} {car.year}{gear ? ` · ${gear}` : ''}. Los intervalos, fluidos y torques deben comprobarse con documentación de la versión exacta.</p>
             <label className="biblioteca-search">
                 <span>Buscar mantenimiento</span>
-                <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Ej. aceite, bujías, frenos..." />
+                <input
+                    value={busqueda}
+                    onChange={e => setBusqueda(e.target.value)}
+                    placeholder="Ej. aceite, bujías, frenos..."
+                    maxLength={FIELD_LIMITS.search}
+                />
             </label>
             <div className="biblioteca-grid">
                 {visibles.map(item => (

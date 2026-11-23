@@ -7,7 +7,8 @@ import {
 } from 'react'
 
 import { supabase } from '../lib/supabaseClient'
-import { isValidPassword } from './passwordValidation'
+import { isValidEmail, isValidPassword } from './passwordValidation'
+import { FIELD_LIMITS } from './fieldLimits'
 
 const AuthContext = createContext(null)
 
@@ -130,6 +131,22 @@ export function AuthProvider({ children }) {
     async function register(name, email, password) {
         if (!name.trim()) {
             throw new Error('Ingresa un nombre de usuario válido.')
+        }
+
+        if (name.length > FIELD_LIMITS.username) {
+            throw new Error(`El nombre no puede superar ${FIELD_LIMITS.username} caracteres.`)
+        }
+
+        if (email.length > FIELD_LIMITS.email) {
+            throw new Error(`El correo electrónico no puede superar ${FIELD_LIMITS.email} caracteres.`)
+        }
+
+        if (!isValidEmail(email)) {
+            throw new Error('Ingresa un correo electrónico válido.')
+        }
+
+        if (password.length > FIELD_LIMITS.password) {
+            throw new Error(`La contraseña no puede superar ${FIELD_LIMITS.password} caracteres.`)
         }
 
         if (!isValidPassword(password)) {
