@@ -3,9 +3,9 @@
 **Proyecto:** AutoLibrary, Biblioteca Digital Automotriz  
 **Materia:** Aplicaciones Web  
 **Modalidad:** Individual  
+**Alumno:** Brian de Jesus Gastelum Fierro
 **Período documentado:** 6–22 de noviembre de 2026  
-**Versión de entrega:** [Anotar aquí el hash del último commit antes de la fecha límite]  
-**Repositorio GitHub:** [Pegar aquí la URL del repositorio]  
+**Repositorio GitHub:** [proyecto_web_Manuales_carros](https://github.com/Deg117/proyecto_web_Manuales_carros)
 **Aplicación publicada:** https://autolibrary.deg117.workers.dev/
 
 > **Alcance del registro.** Esta bitácora resume el proceso de desarrollo y las interacciones de IA documentadas durante el proyecto. Distingo entre funciones implementadas, verificaciones que realicé o reporté y comprobaciones que todavía deben contrastarse con el repositorio. Los ejemplos de instrucciones a IA son resúmenes representativos, no transcripciones literales de todos los mensajes.
@@ -159,7 +159,7 @@ Los siguientes ejemplos **resumen el tipo de instrucciones** que utilicé; no so
 - Autenticación: `client/src/auth/AuthForm.jsx` y `client/src/auth/AuthContext.jsx`.
 - Configuración del Worker: `client/wrangler.jsonc`.
 - Base de datos: consultas SQL realizadas en Supabase para verificar tres registros en `public.documentos`.
-- Publicación: https://autolibrary.deg117.workers.dev/ (comprobar que incluya el último commit).
+- Publicación: https://autolibrary.deg117.workers.dev/.
 
 **Evidencia que debe anexarse si está disponible:** capturas de pruebas de la app, error `428C9`, resultado del `SELECT` con tres documentos, salida de `npm run build`/`npm run lint` y hash del commit final. No es necesario inventar capturas o resultados.
 
